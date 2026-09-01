@@ -12,7 +12,9 @@ jobs:
   build-android:
     name: Build Android APK (arm64-v8a)
     runs-on: ubuntu-24.04
+
     steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -20,57 +22,100 @@ jobs:
           fetch-tags: true
           submodules: recursive
 
+      # ── 2. Java ───────────────────────────────────────────────────────────────
       - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Set up Android NDK & SDK
-        uses: nttld/setup-ndk@v1
-        id: setup-ndk
-        with:
-          ndk-version: r26d
-          add-to-path: true
+      # ── 3. Android SDK + NDK ─────────────────────────────────────────────────
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
+      - name: Install Android NDK 28
+        run: |
+          sdkmanager "ndk;28.2.13676358"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/28.2.13676358" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/28.2.13676358"      >> $GITHUB_ENV
+
+      # ── 4. Host build tools ──────────────────────────────────────────────────
       - name: Install Host Build Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build zip unzip tar curl pkg-config
+          sudo apt-get install -y cmake ninja-build zip unzip tar curl pkg-config git
 
-      - name: Restore vcpkg cache
+      # ── 5. vcpkg bootstrap (cached) ───────────────────────────────────────────
+      - name: Cache vcpkg installation
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: ${{ github.workspace }}/.vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}-v1
+
+      - name: Bootstrap vcpkg
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/Microsoft/vcpkg.git ${{ github.workspace }}/.vcpkg
+          ${{ github.workspace }}/.vcpkg/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Update vcpkg (if cache hit)
+        if: steps.vcpkg-cache.outputs.cache-hit == 'true'
+        run: |
+          git -C ${{ github.workspace }}/.vcpkg pull --ff-only || true
+          if [ ! -f "${{ github.workspace }}/.vcpkg/vcpkg" ]; then
+            ${{ github.workspace }}/.vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
+
+      # ── 6. vcpkg packages (cached) ────────────────────────────────────────────
+      - name: Cache vcpkg packages (arm64-android)
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cache/vcpkg
-            build-android/vcpkg_installed
-          key: ${{ runner.os }}-vcpkg-android-arm64-${{ hashFiles('vcpkg.json') }}
+          path: ${{ github.workspace }}/.vcpkg/installed
+          key: ${{ runner.os }}-vcpkg-pkgs-arm64-android-${{ hashFiles('vcpkg.json') }}-v1
           restore-keys: |
-            ${{ runner.os }}-vcpkg-android-arm64-
+            ${{ runner.os }}-vcpkg-pkgs-arm64-android-
 
-      - name: Configure and Build Native Library (arm64-v8a)
+      - name: Install vcpkg packages for arm64-android
         env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        run: |
+          $VCPKG_ROOT/vcpkg install \
+            --triplet arm64-android \
+            --overlay-triplets=${{ github.workspace }}/.vcpkg/triplets/community \
+            2>&1 | tail -30
+
+      # ── 7. CMake configure + build native lib ─────────────────────────────────
+      - name: Configure Native Library with CMake
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
         run: |
           cmake -B build-android -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.vcpkg/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
+            -DVCPKG_TARGET_TRIPLET=arm64-android \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-21 \
             -DANDROID_STL=c++_static \
             -DENABLE_VCPKG=ON \
-            -DVCPKG_TARGET_TRIPLET=arm64-android \
+            -DSKIP_AUTOMATE_VCPKG=OFF \
             -DBUILD_MK64=ON \
             -DBUILD_NAUDIO=ON \
             -DCMAKE_BUILD_TYPE=Release
 
-          cmake --build build-android --target libSpaghettify.so --parallel $(nproc)
+      - name: Build Native Library (libSpaghettify.so)
+        run: cmake --build build-android --target libSpaghettify.so --parallel $(nproc)
 
+      # ── 8. Copy .so to Android project ────────────────────────────────────────
       - name: Copy Native Library to Android Project
         run: |
           mkdir -p android/app/libs/arm64-v8a
           cp build-android/libSpaghettify.so android/app/libs/arm64-v8a/libSpaghettify.so
           ls -lh android/app/libs/arm64-v8a/libSpaghettify.so
 
+      # ── 9. Gradle APK ─────────────────────────────────────────────────────────
       - name: Make Gradle Wrapper Executable
         run: chmod +x android/gradlew
 
@@ -79,6 +124,7 @@ jobs:
           cd android
           ./gradlew assembleDebug --stacktrace
 
+      # ── 10. Upload APK ────────────────────────────────────────────────────────
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:

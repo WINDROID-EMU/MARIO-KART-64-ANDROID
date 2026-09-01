@@ -54,6 +54,7 @@ extern "C" {
 #include "src/enhancements/collision_viewer.h"
 #include "code_800029B0.h"
 #include "code_80057C60.h"
+#include "net/net.h"
 // #include "engine/wasm.h"
 }
 
@@ -1054,6 +1055,7 @@ extern "C"
     setenv("SHIP_HOME", "~/Library/Application Support/SpaghettiKart", 0);
 #endif
     // load_wasm();
+    netInit();
 #if defined(__ANDROID__)
     // Wait for the Java side to finish extracting assets before the engine starts
     {

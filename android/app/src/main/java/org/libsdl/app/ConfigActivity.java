@@ -3,6 +3,7 @@ package org.libsdl.app;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
@@ -37,13 +38,18 @@ public class ConfigActivity extends Activity {
     public static final String PREFS_NAME = "MK64_Settings";
 
     // Tabs & Panels
-    private Button tabControls, tabGameplay, tabTracks, tabSound, tabRaw;
-    private View panelControls, panelGameplay, panelTracks, panelSound, panelRaw;
+    private Button tabControls, tabGameplay, tabTracks, tabSound, tabMultiplayer, tabRaw;
+    private View panelControls, panelGameplay, panelTracks, panelSound, panelMultiplayer, panelRaw;
     private Button currentTabButton;
     private View currentPanel;
 
     // Header buttons
     private Button btnSave, btnClose, btnRestoreDefaults, btnReloadRaw;
+
+    // Multiplayer tab widgets
+    private TextView tvNetHostIp;
+    private Button btnCopyHostIp, btnStartHost, btnJoinGame;
+    private EditText etHostPort, etJoinIp, etJoinPort;
 
     // Controls tab widgets
     private SeekBar sbOpacity;
@@ -87,6 +93,7 @@ public class ConfigActivity extends Activity {
         setupTabs();
         setupSpinners();
         setupSeekBars();
+        setupMultiplayer();
         loadSettings();
     }
 
@@ -95,18 +102,29 @@ public class ConfigActivity extends Activity {
         tabGameplay = findViewById(R.id.tab_gameplay);
         tabTracks = findViewById(R.id.tab_tracks);
         tabSound = findViewById(R.id.tab_sound);
+        tabMultiplayer = findViewById(R.id.tab_multiplayer);
         tabRaw = findViewById(R.id.tab_raw);
 
         panelControls = findViewById(R.id.panel_controls);
         panelGameplay = findViewById(R.id.panel_gameplay);
         panelTracks = findViewById(R.id.panel_tracks);
         panelSound = findViewById(R.id.panel_sound);
+        panelMultiplayer = findViewById(R.id.panel_multiplayer);
         panelRaw = findViewById(R.id.panel_raw);
 
         btnSave = findViewById(R.id.btn_save);
         btnClose = findViewById(R.id.btn_close);
         btnRestoreDefaults = findViewById(R.id.btn_restore_defaults);
         btnReloadRaw = findViewById(R.id.btn_reload_raw);
+
+        // Multiplayer widgets
+        tvNetHostIp = findViewById(R.id.tv_net_host_ip);
+        btnCopyHostIp = findViewById(R.id.btn_copy_host_ip);
+        btnStartHost = findViewById(R.id.btn_start_host);
+        etHostPort = findViewById(R.id.et_host_port);
+        etJoinIp = findViewById(R.id.et_join_ip);
+        etJoinPort = findViewById(R.id.et_join_port);
+        btnJoinGame = findViewById(R.id.btn_join_game);
 
         sbOpacity = findViewById(R.id.sb_opacity);
         tvOpacityVal = findViewById(R.id.tv_opacity_val);
@@ -166,6 +184,10 @@ public class ConfigActivity extends Activity {
             else if (v == tabGameplay) currentPanel = panelGameplay;
             else if (v == tabTracks) currentPanel = panelTracks;
             else if (v == tabSound) currentPanel = panelSound;
+            else if (v == tabMultiplayer) {
+                currentPanel = panelMultiplayer;
+                updateMultiplayerInfo();
+            }
             else if (v == tabRaw) {
                 currentPanel = panelRaw;
                 updateRawJsonText();
@@ -180,7 +202,130 @@ public class ConfigActivity extends Activity {
         tabGameplay.setOnClickListener(tabListener);
         tabTracks.setOnClickListener(tabListener);
         tabSound.setOnClickListener(tabListener);
+        tabMultiplayer.setOnClickListener(tabListener);
         tabRaw.setOnClickListener(tabListener);
+    }
+
+    private void setupMultiplayer() {
+        String lastIp = prefs.getString("net_last_ip", "192.168.43.1");
+        int lastPort = prefs.getInt("net_last_port", 27100);
+        if (etJoinIp != null) etJoinIp.setText(lastIp);
+        if (etJoinPort != null) etJoinPort.setText(String.valueOf(lastPort));
+
+        if (btnCopyHostIp != null) {
+            btnCopyHostIp.setOnClickListener(v -> {
+                String primaryIp = getPrimaryIpAddress();
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    android.content.ClipData clip = android.content.ClipData.newPlainText("IP Mario Kart 64", primaryIp);
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(this, "IP " + primaryIp + " copiado para a área de transferência!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        if (btnStartHost != null) {
+            btnStartHost.setOnClickListener(v -> {
+                int port = 27100;
+                try {
+                    port = Integer.parseInt(etHostPort.getText().toString().trim());
+                } catch (Exception ignored) {}
+
+                Intent intent = new Intent(this, SDLActivity.class);
+                intent.putExtra("extra_net_mode", 1); // 1 = Host
+                intent.putExtra("extra_net_port", port);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
+                finish();
+            });
+        }
+
+        if (btnJoinGame != null) {
+            btnJoinGame.setOnClickListener(v -> {
+                String ip = etJoinIp.getText().toString().trim();
+                if (ip.isEmpty()) ip = "127.0.0.1";
+
+                int port = 27100;
+                try {
+                    port = Integer.parseInt(etJoinPort.getText().toString().trim());
+                } catch (Exception ignored) {}
+
+                prefs.edit()
+                        .putString("net_last_ip", ip)
+                        .putInt("net_last_port", port)
+                        .apply();
+
+                Intent intent = new Intent(this, SDLActivity.class);
+                intent.putExtra("extra_net_mode", 2); // 2 = Join
+                intent.putExtra("extra_net_ip", ip);
+                intent.putExtra("extra_net_port", port);
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intent);
+                finish();
+            });
+        }
+    }
+
+    private void updateMultiplayerInfo() {
+        if (tvNetHostIp != null) {
+            tvNetHostIp.setText(getDeviceIpSummary());
+        }
+    }
+
+    private String getDeviceIpSummary() {
+        StringBuilder sb = new StringBuilder();
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                java.net.NetworkInterface iface = interfaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) continue;
+                String name = iface.getName().toLowerCase();
+                String displayName = iface.getDisplayName().toLowerCase();
+
+                String label = "Rede Local";
+                if (name.contains("wlan") || displayName.contains("wlan") || displayName.contains("wi-fi")) {
+                    label = "Wi-Fi";
+                } else if (name.contains("ap") || name.contains("rndis") || name.contains("tether")) {
+                    label = "Ponto de Acesso (Hotspot)";
+                } else if (name.contains("eth")) {
+                    label = "Ethernet";
+                } else if (name.contains("tun") || name.contains("zt") || name.contains("tailscale")) {
+                    label = "VPN / ZeroTier";
+                }
+
+                java.util.Enumeration<java.net.InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress addr = addresses.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        if (sb.length() > 0) sb.append("\n");
+                        sb.append(label).append(" (").append(iface.getName()).append("): ").append(addr.getHostAddress());
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (sb.length() == 0) {
+            return "127.0.0.1 (Sem conexão Wi-Fi/Hotspot ativa)";
+        }
+        return sb.toString();
+    }
+
+    private String getPrimaryIpAddress() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                java.net.NetworkInterface iface = interfaces.nextElement();
+                if (iface.isLoopback() || !iface.isUp()) continue;
+                java.util.Enumeration<java.net.InetAddress> addresses = iface.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress addr = addresses.nextElement();
+                    if (!addr.isLoopbackAddress() && addr instanceof java.net.Inet4Address) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return "127.0.0.1";
     }
 
     private void setupSpinners() {

@@ -146,6 +146,18 @@
                 android:textSize="11sp" />
 
             <Button
+                android:id="@+id/tab_multiplayer"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/btn_tab_inactive"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="🌐 Multiplayer (Netplay)"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp" />
+
+            <Button
                 android:id="@+id/tab_raw"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
@@ -567,6 +579,216 @@
                             android:textSize="12sp"
                             android:gravity="right" />
                     </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Panel: MULTIPLAYER NETPLAY -->
+            <LinearLayout
+                android:id="@+id/panel_multiplayer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Card: Host Game -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/card_bg"
+                    android:padding="12dp"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="👑 Criar Sala (Host Game / Jogador 1)"
+                        android:textColor="#FFC107"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Inicie o servidor local. Seus amigos na mesma rede Wi-Fi / Ponto de Acesso entrarão neste IP."
+                        android:textColor="#8B9BB4"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Seu Endereço IP Detectado:"
+                        android:textColor="#00E5FF"
+                        android:textSize="11sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_net_host_ip"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Detectando IP..."
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"
+                        android:background="@drawable/edit_text_bg"
+                        android:padding="8dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <Button
+                            android:id="@+id/btn_copy_host_ip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:background="@drawable/btn_dark"
+                            android:text="📋 Copiar IP"
+                            android:textColor="#FFD700"
+                            android:textSize="11sp"
+                            android:paddingLeft="10dp"
+                            android:paddingRight="10dp"
+                            android:layout_marginRight="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Porta:"
+                            android:textColor="#8B9BB4"
+                            android:textSize="11sp"
+                            android:layout_marginRight="4dp" />
+
+                        <EditText
+                            android:id="@+id/et_host_port"
+                            android:layout_width="70dp"
+                            android:layout_height="32dp"
+                            android:background="@drawable/edit_text_bg"
+                            android:inputType="number"
+                            android:text="27100"
+                            android:gravity="center"
+                            android:textColor="#FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginRight="10dp" />
+
+                        <Button
+                            android:id="@+id/btn_start_host"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/btn_gold"
+                            android:text="🚀 Iniciar Como Host"
+                            android:textColor="#1A1500"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Card: Join Game -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/card_bg"
+                    android:padding="12dp"
+                    android:layout_marginBottom="10dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="🎮 Entrar em Sala (Join Game / Jogador 2, 3 ou 4)"
+                        android:textColor="#00E5FF"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Digite o endereço IP do amigo que criou a sala Host e conecte-se."
+                        android:textColor="#8B9BB4"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="IP do Servidor Host:"
+                        android:textColor="#FFFFFF"
+                        android:textSize="11sp" />
+
+                    <EditText
+                        android:id="@+id/et_join_ip"
+                        android:layout_width="match_parent"
+                        android:layout_height="36dp"
+                        android:background="@drawable/edit_text_bg"
+                        android:hint="Ex: 192.168.43.1"
+                        android:textColorHint="#555555"
+                        android:textColor="#00E5FF"
+                        android:textSize="12sp"
+                        android:fontFamily="monospace"
+                        android:paddingLeft="8dp"
+                        android:paddingRight="8dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Porta UDP:"
+                            android:textColor="#8B9BB4"
+                            android:textSize="11sp"
+                            android:layout_marginRight="4dp" />
+
+                        <EditText
+                            android:id="@+id/et_join_port"
+                            android:layout_width="70dp"
+                            android:layout_height="32dp"
+                            android:background="@drawable/edit_text_bg"
+                            android:inputType="number"
+                            android:text="27100"
+                            android:gravity="center"
+                            android:textColor="#FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginRight="10dp" />
+
+                        <Button
+                            android:id="@+id/btn_join_game"
+                            android:layout_width="0dp"
+                            android:layout_height="34dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/btn_gold"
+                            android:text="⚡ Conectar na Sala"
+                            android:textColor="#1A1500"
+                            android:textSize="11sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Dicas de Multiplayer -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="💡 Como Jogar:\n1. Ambos os celulares devem estar no mesmo Wi-Fi ou um conectado no Roteador Wi-Fi (Hotspot) do outro.\n2. O Jogador 1 clica em 'Iniciar Como Host'.\n3. Os outros jogadores inserem o IP do Jogador 1 e clicam em 'Conectar na Sala'.\n4. Na tela inicial do jogo, selecionem o modo Multiplayer (2P, 3P ou 4P) e divirtam-se!"
+                        android:textColor="#8B9BB4"
+                        android:textSize="11sp"
+                        android:lineSpacingExtra="3dp" />
                 </LinearLayout>
             </LinearLayout>
 

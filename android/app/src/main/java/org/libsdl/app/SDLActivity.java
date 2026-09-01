@@ -966,11 +966,25 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         // Get filename from "Open with" of another application
         Intent intent = getIntent();
-        if (intent != null && intent.getData() != null) {
-            String filename = intent.getData().getPath();
-            if (filename != null) {
-                Log.v(TAG, "Got filename: " + filename);
-                SDLActivity.onNativeDropFile(filename);
+        if (intent != null) {
+            if (intent.getData() != null) {
+                String filename = intent.getData().getPath();
+                if (filename != null) {
+                    Log.v(TAG, "Got filename: " + filename);
+                    SDLActivity.onNativeDropFile(filename);
+                }
+            }
+            int netMode = intent.getIntExtra("extra_net_mode", 0);
+            String netIp = intent.getStringExtra("extra_net_ip");
+            if (netIp == null) netIp = "";
+            int netPort = intent.getIntExtra("extra_net_port", 27100);
+            if (netMode != 0) {
+                Log.i(TAG, "Configurando Netplay: mode=" + netMode + " IP=" + netIp + " Port=" + netPort);
+                try {
+                    nativeSetNetMode(netMode, netIp, netPort);
+                } catch (UnsatisfiedLinkError e) {
+                    Log.e(TAG, "Erro ao chamar nativeSetNetMode", e);
+                }
             }
         }
     }
@@ -1574,6 +1588,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
     public static native void nativeAddTouch(int touchId, String name);
     public static native void nativePermissionResult(int requestCode, boolean result);
     public static native void onNativeLocaleChanged();
+    public static native void nativeSetNetMode(int mode, String ip, int port);
 
     /**
      * This method is called by SDL using JNI.

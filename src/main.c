@@ -38,6 +38,7 @@
 #include "port/interpolation/FrameInterpolation.h"
 #include "engine/wasm.h"
 #include "port/Game.h"
+#include "net/net.h"
 #include "port/Engine.h"
 #include "engine/Matrix.h"
 #include "engine/TrackBrowser.h"
@@ -395,6 +396,39 @@ void read_controllers(void) {
     osContStartReadData(&gSIEventMesgQueue);
     // osRecvMesg(&gSIEventMesgQueue, &msg, OS_MESG_BLOCK);
     osContGetReadData(gControllerPads);
+
+    if (g_NetMode != NET_MODE_NONE) {
+        // Envia o input local do jogador associado a este aparelho
+        int localIdx = g_NetPlayerIndex;
+        if (localIdx >= 0 && localIdx < 4) {
+            netSendLocalInput(
+                (uint8_t)localIdx,
+                gControllerPads[localIdx].button,
+                gControllerPads[localIdx].stick_x,
+                gControllerPads[localIdx].stick_y,
+                gControllerPads[localIdx].right_stick_x,
+                gControllerPads[localIdx].right_stick_y
+            );
+        }
+
+        // Processa eventos de rede recebidos
+        netUpdate();
+
+        // Preenche os pads remotos com os dados sincronizados
+        for (int i = 0; i < 4; i++) {
+            if (i != localIdx) {
+                netGetPadData(
+                    i,
+                    &gControllerPads[i].button,
+                    &gControllerPads[i].stick_x,
+                    &gControllerPads[i].stick_y,
+                    &gControllerPads[i].right_stick_x,
+                    &gControllerPads[i].right_stick_y
+                );
+            }
+        }
+    }
+
     update_controller(0);
     update_controller(1);
     update_controller(2);

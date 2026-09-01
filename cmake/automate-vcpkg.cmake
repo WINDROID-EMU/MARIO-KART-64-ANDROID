@@ -164,7 +164,7 @@ macro(vcpkg_install_packages)
 
     execute_process(
         COMMAND ${VCPKG_EXEC} install ${ARGN}
-        WORKING_DIRECTORY ${VCPKG_ROOT}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
 endmacro()
     

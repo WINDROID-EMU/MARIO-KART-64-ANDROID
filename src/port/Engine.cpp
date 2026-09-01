@@ -168,8 +168,9 @@ GameEngine::GameEngine() {
                       { BTN_DDOWN, "DDown" },
                   });
     auto controlDeck = std::make_shared<LUS::ControlDeck>(std::vector<CONTROLLERBUTTONS_T>(), defaultMappings, buttonNames);
-    const std::string assets_path = Ship::Context::LocateFileAcrossAppDirs(engine_asset_file);
-    this->context->InitResourceManager({assets_path}, {}, 3); // without this line InitWindow fails in Gui::Init()
+    const std::string engine_path = Ship::Context::LocateFileAcrossAppDirs(engine_asset_file);
+    const std::string game_path = Ship::Context::LocateFileAcrossAppDirs(game_asset_file);
+    this->context->InitResourceManager({engine_path, game_path}, {}, 3); // without this line InitWindow fails in Gui::Init()
     this->context->InitConsole(); // without this line the GuiWindow constructor fails in ConsoleWindow::InitElement()
 
     auto gui = std::make_shared<Ship::SpaghettiGui>(std::vector<std::shared_ptr<Ship::GuiWindow>>({}));
@@ -181,7 +182,7 @@ GameEngine::GameEngine() {
     gui->AddGuiWindow(std::make_shared<LUS::InputEditorWindow>(CVAR_CONTROLLER_CONFIGURATION_WINDOW_OPEN, "Input Editor"));
     gui->AddGuiWindow(std::make_shared<LUS::GfxDebuggerWindow>(CVAR_GFX_DEBUGGER_WINDOW_OPEN, "GfxDebuggerWindow", ImVec2(520, 600)));
 
-    this->context->Init({assets_path}, {}, 3, { 26800, 512, 1100 }, wnd, controlDeck);
+    this->context->Init({engine_path, game_path}, {}, 3, { 26800, 512, 1100 }, wnd, controlDeck);
 
 #ifndef __SWITCH__
     Ship::Context::GetRawInstance()->GetLogger()->set_level(

@@ -1,5 +1,9 @@
 #include <libultraship.h>
 #include <typeinfo>
+#if defined(__ANDROID__)
+#include <jni.h>
+#include <SDL.h>
+#endif
 
 #include "Game.h"
 #include "port/Engine.h"
@@ -1050,6 +1054,20 @@ extern "C"
     setenv("SHIP_HOME", "~/Library/Application Support/SpaghettiKart", 0);
 #endif
     // load_wasm();
+#if defined(__ANDROID__)
+    // Wait for the Java side to finish extracting assets before the engine starts
+    {
+        JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
+        jclass cls = env->FindClass("org/libsdl/app/SDLActivity");
+        if (cls) {
+            jmethodID mid = env->GetStaticMethodID(cls, "waitForSetupFromNative", "()V");
+            if (mid) {
+                env->CallStaticVoidMethod(cls, mid);
+            }
+            env->DeleteLocalRef(cls);
+        }
+    }
+#endif
     GameEngine::Create();
     audio_init();
     sound_init();

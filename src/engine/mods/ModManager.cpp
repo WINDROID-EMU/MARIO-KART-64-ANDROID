@@ -246,9 +246,6 @@ void FindAndLoadMods() {
             const std::string msg = "The archive at path " + path +
                                     " is missing a mods.toml file. The Mod are likely incompatible.\n\n"
                                     "Do you want to continue loading the mods?";
-            if (GameEngine::ShowYesNoBox("Missing mods.toml", msg.c_str()) == IDNO) {
-                _Exit(1);
-            }
             metadata.name = std::filesystem::path(path).stem().string();
             semver::parse("0.0.0", metadata.version);
             SPDLOG_WARN("The mod at path {} is missing a mods.toml file. Using default metadata:\n{}", path, metadata.ToString());
@@ -265,8 +262,7 @@ void DetectCyclicDependencies() {
             msg += " - " + cycle + "\n";
         }
         msg += "\nPlease resolve these cyclic dependencies before continuing.\n";
-        GameEngine::ShowMessage("Cyclic Dependency Issues", msg.c_str());
-        _Exit(1);
+        SPDLOG_WARN("{}", msg);
     }
 }
 
@@ -286,8 +282,7 @@ void DetectOutdatedDependencies() {
 
     if (exitDueToErrors) {
         allDepIssues += "\nPlease resolve these dependency issues before continuing.\n";
-        GameEngine::ShowMessage("Dependency Issues", allDepIssues.c_str());
-        _Exit(1);
+        SPDLOG_WARN("{}", allDepIssues);
     }
 }
 

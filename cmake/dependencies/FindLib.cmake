@@ -1,4 +1,4 @@
-if(WIN32)
+if(WIN32 OR ANDROID)
   find_package(Ogg CONFIG REQUIRED)
   find_package(Vorbis CONFIG REQUIRED)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")

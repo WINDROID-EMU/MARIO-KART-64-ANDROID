@@ -18,7 +18,7 @@ include(cmake/SetCmakeVar.cmake)
 set(YAML_CPP_STATIC_DEFINE ON)
 include(libultraship/cmake/cvars.cmake)
 
-if(WIN32)
+if(WIN32 OR ANDROID)
   option(ENABLE_VCPKG "Enable vcpkg for dependencies" ON)
 else()
   option(ENABLE_VCPKG "Enable vcpkg for dependencies" OFF)
@@ -38,7 +38,11 @@ if(IOS OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
 endif()
 
 # Toggle for GLES (Required for many ARM/Mobile platforms)
-option(USE_OPENGLES "Use OpenGLES instead of Desktop OpenGL" OFF)
+if(ANDROID)
+  option(USE_OPENGLES "Use OpenGLES instead of Desktop OpenGL" ON)
+else()
+  option(USE_OPENGLES "Use OpenGLES instead of Desktop OpenGL" OFF)
+endif()
 
 # Set game compilation version
 set(VERSION us)
@@ -126,7 +130,11 @@ if(SPAGHETTIKART_IOS)
 
 endif()
 
-add_executable(${PROJECT_NAME} ${ALL_FILES})
+if(ANDROID)
+  add_library(${PROJECT_NAME} SHARED ${ALL_FILES})
+else()
+  add_executable(${PROJECT_NAME} ${ALL_FILES})
+endif()
 target_include_directories(
   ${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
                           ${CMAKE_CURRENT_SOURCE_DIR}/include

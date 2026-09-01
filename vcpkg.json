@@ -22,9 +22,19 @@
       "name": "sdl2",
       "platform": "osx"
     },
+    {
+      "name": "sdl2",
+      "platform": "android"
+    },
     "sdl2-net",
-    "glew",
-    "glfw3",
+    {
+      "name": "glew",
+      "platform": "!android"
+    },
+    {
+      "name": "glfw3",
+      "platform": "!android"
+    },
     "nlohmann-json",
     "tinyxml2",
     "spdlog",

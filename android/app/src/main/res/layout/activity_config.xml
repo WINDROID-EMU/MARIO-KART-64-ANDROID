@@ -1,0 +1,624 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0B0E14"
+    android:padding="8dp">
+
+    <!-- Top Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="6dp"
+        android:paddingTop="2dp"
+        android:paddingLeft="6dp"
+        android:paddingRight="6dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Configurações MARIO KART 64"
+                android:textColor="#FFC107"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Spaghettify Engine"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_restore_defaults"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/btn_danger"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:text="Padrões"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/btn_gold"
+                android:paddingLeft="14dp"
+                android:paddingRight="14dp"
+                android:text="Salvar"
+                android:textColor="#1A1500"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_close"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:background="@drawable/btn_dark"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="Fechar"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Tab Bar -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingBottom="6dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/tab_controls"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/btn_tab_active"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="🎮 Controles"
+                android:textColor="#FFC107"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/tab_gameplay"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/btn_tab_inactive"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="🏎️ Gameplay"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/tab_tracks"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/btn_tab_inactive"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="🏁 Pistas &amp; Tráfego"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/tab_sound"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginRight="4dp"
+                android:background="@drawable/btn_tab_inactive"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="🔊 Áudio"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/tab_raw"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/btn_tab_inactive"
+                android:paddingLeft="12dp"
+                android:paddingRight="12dp"
+                android:text="📝 Config JSON"
+                android:textColor="#8B9BB4"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Main Content Container -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Panel: CONTROLES -->
+            <LinearLayout
+                android:id="@+id/panel_controls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Opacidade dos Controles Virtuais"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <SeekBar
+                            android:id="@+id/sb_opacity"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="70" />
+
+                        <TextView
+                            android:id="@+id/tv_opacity_val"
+                            android:layout_width="45dp"
+                            android:layout_height="wrap_content"
+                            android:text="70%"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:gravity="right" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tamanho dos Botões"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/sp_button_size"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/edit_text_bg" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <CheckBox
+                        android:id="@+id/cb_c_buttons"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Exibir Botões C Amarelos (Câmera / Mapa / Retrovisor)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_extra_z"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Exibir Botão Z Extra no Canto Superior Esquerdo"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_floating_analog"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Analógico Flutuante (Centraliza no toque do polegar)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Panel: GAMEPLAY -->
+            <LinearLayout
+                android:id="@+id/panel_gameplay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Cilindrada Customizada (Velocidade dos Karts)"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/sp_custom_cc"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/edit_text_bg" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <CheckBox
+                        android:id="@+id/cb_skip_intro"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Pular Logo de Abertura / Intro"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_freecam"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Habilitar Câmera Livre (Freecam)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_debug_mode"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Menu de Debug do Mario Kart 64"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_show_version"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Exibir Versão Spaghetti na Tela de Título"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Panel: PISTAS & TRÁFEGO -->
+            <LinearLayout
+                android:id="@+id/panel_tracks"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <CheckBox
+                        android:id="@+id/cb_disable_lod"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:checked="true"
+                        android:text="Desativar LOD (Modelos em Alta Definição à distância)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+
+                    <CheckBox
+                        android:id="@+id/cb_no_culling"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Desativar Culling (Renderizar todos os objetos e vacas)"
+                        android:textColor="#FFFFFF"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Trens no Deserto Kalimari"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/sp_num_trains"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/edit_text_bg" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Densidade do Tráfego na Rodovia do Toad"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <Spinner
+                        android:id="@+id/sp_num_traffic"
+                        android:layout_width="match_parent"
+                        android:layout_height="40dp"
+                        android:layout_marginTop="6dp"
+                        android:background="@drawable/edit_text_bg" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Panel: ÁUDIO -->
+            <LinearLayout
+                android:id="@+id/panel_sound"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Volume Master Geral"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <SeekBar
+                            android:id="@+id/sb_vol_master"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="100" />
+
+                        <TextView
+                            android:id="@+id/tv_vol_master_val"
+                            android:layout_width="45dp"
+                            android:layout_height="wrap_content"
+                            android:text="100%"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:gravity="right" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Volume da Música"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <SeekBar
+                            android:id="@+id/sb_vol_music"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="100" />
+
+                        <TextView
+                            android:id="@+id/tv_vol_music_val"
+                            android:layout_width="45dp"
+                            android:layout_height="wrap_content"
+                            android:text="100%"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:gravity="right" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/card_bg"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Volume dos Efeitos Sonoros (SFX)"
+                        android:textColor="#FFC107"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <SeekBar
+                            android:id="@+id/sb_vol_sfx"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="100" />
+
+                        <TextView
+                            android:id="@+id/tv_vol_sfx_val"
+                            android:layout_width="45dp"
+                            android:layout_height="wrap_content"
+                            android:text="100%"
+                            android:textColor="#FFFFFF"
+                            android:textSize="12sp"
+                            android:gravity="right" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Panel: RAW JSON -->
+            <LinearLayout
+                android:id="@+id/panel_raw"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="6dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="spaghettify.cfg.json (Editor Direto)"
+                        android:textColor="#8B9BB4"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btn_reload_raw"
+                        android:layout_width="wrap_content"
+                        android:layout_height="28dp"
+                        android:background="@drawable/btn_dark"
+                        android:paddingLeft="10dp"
+                        android:paddingRight="10dp"
+                        android:text="Recarregar"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <EditText
+                    android:id="@+id/et_raw_json"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/edit_text_bg"
+                    android:fontFamily="monospace"
+                    android:gravity="top|left"
+                    android:inputType="textMultiLine"
+                    android:padding="10dp"
+                    android:textColor="#80D8FF"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+        </FrameLayout>
+    </ScrollView>
+
+</LinearLayout>

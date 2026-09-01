@@ -133,3 +133,10 @@ _packages/
 out/
 
 compile_commands.json
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+.cxx/

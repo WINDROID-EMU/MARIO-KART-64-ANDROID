@@ -365,6 +365,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
                 boolean isC = (b.type == 2);
                 Paint curPaint = isC ? (b.pressed ? cFillPaint : cStrokePaint) : (b.pressed ? fillPaint : strokePaint);
                 Paint curTextPaint = isC ? cTextPaint : textPaint;
+                int savedTextColor = curTextPaint.getColor(); // save before mutating
                 int currentTextColor = b.pressed ? 0xFF000000 : (isC ? 0xCCFFD700 : 0xAAFFFFFF);
                 curTextPaint.setColor(currentTextColor);
                 
@@ -384,6 +385,7 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
                 if (b.type == 1) {
                     curTextPaint.setTextSize(oldSize);
                 }
+                curTextPaint.setColor(savedTextColor); // restore color to avoid leaking into toggle
             }
         }
 

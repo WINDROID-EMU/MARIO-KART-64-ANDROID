@@ -26,6 +26,7 @@
 #include "math_util.h"
 #include "port/interpolation/FrameInterpolation.h"
 #include "engine/CoreMath.h"
+#include "net/net.h"
 
 Vp D_802B8880[] = {
     { { { 640, 480, 511, 0 }, { 640, 480, 511, 0 } } },
@@ -263,7 +264,7 @@ void select_framebuffer(void) {
 
 void func_802A4300(void) {
 
-    if (gActiveScreenMode == SCREEN_MODE_1P) {
+    if (g_NetMode != NET_MODE_NONE || gActiveScreenMode == SCREEN_MODE_1P) {
         return;
     }
     if (D_800DC5B0 != 0) {

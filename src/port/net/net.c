@@ -68,8 +68,8 @@ typedef struct {
 
 static NetGameStatePacket  g_LastGameState = { 0 };
 static bool                g_HasNewGameState = false;
-static NetPlayerSyncPacket g_LastPlayerSync[NET_MAX_CLIENTS] = { 0 };
-static bool                g_HasNewPlayerSync[NET_MAX_CLIENTS] = { false };
+static NetPlayerSyncPacket g_LastPlayerSync[NET_MAX_RACERS] = { 0 };
+static bool                g_HasNewPlayerSync[NET_MAX_RACERS] = { false };
 
 void netInit(void) {
     if (enet_initialize() != 0) {
@@ -81,7 +81,7 @@ void netInit(void) {
     memset(&g_LastGameState, 0, sizeof(g_LastGameState));
     memset(g_LastPlayerSync, 0, sizeof(g_LastPlayerSync));
     g_HasNewGameState = false;
-    for (int i = 0; i < NET_MAX_CLIENTS; i++) g_HasNewPlayerSync[i] = false;
+    for (int i = 0; i < NET_MAX_RACERS; i++) g_HasNewPlayerSync[i] = false;
 }
 
 void netShutdown(void) {
@@ -262,7 +262,19 @@ void netSendGameState(
     enet_host_broadcast(g_Host, 1, enetPkt);
 }
 
-void netSendPlayerSync(uint8_t playerIdx, const float pos[3], const float velocity[3], const int16_t rotation[3], uint32_t effects, int32_t triggers, int16_t currentItem, uint16_t kartGraphics) {
+void netSendPlayerSync(
+    uint8_t playerIdx,
+    const float pos[3],
+    const float velocity[3],
+    const int16_t rotation[3],
+    uint32_t effects,
+    int32_t triggers,
+    int16_t currentItem,
+    uint16_t kartGraphics,
+    uint8_t rank,
+    uint8_t lap,
+    float lapCompletion
+) {
     if (g_NetMode == NET_MODE_NONE || g_Host == NULL) {
         return;
     }
@@ -277,8 +289,11 @@ void netSendPlayerSync(uint8_t playerIdx, const float pos[3], const float veloci
     pkt.triggers = triggers;
     pkt.currentItem = currentItem;
     pkt.kartGraphics = kartGraphics;
+    pkt.rank = rank;
+    pkt.lap = lap;
+    pkt.lapCompletion = lapCompletion;
 
-    if (playerIdx < NET_MAX_CLIENTS) {
+    if (playerIdx < NET_MAX_RACERS) {
         g_LastPlayerSync[playerIdx] = pkt;
     }
 
@@ -300,7 +315,7 @@ bool netPopGameState(NetGameStatePacket* out) {
 }
 
 bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out) {
-    if (playerIdx >= 0 && playerIdx < NET_MAX_CLIENTS && g_HasNewPlayerSync[playerIdx] && out != NULL) {
+    if (playerIdx >= 0 && playerIdx < NET_MAX_RACERS && g_HasNewPlayerSync[playerIdx] && out != NULL) {
         *out = g_LastPlayerSync[playerIdx];
         g_HasNewPlayerSync[playerIdx] = false;
         return true;
@@ -452,7 +467,7 @@ void netUpdate(void) {
                     }
                 } else if (event.packet->dataLength == sizeof(NetPlayerSyncPacket)) {
                     NetPlayerSyncPacket* ps = (NetPlayerSyncPacket*)event.packet->data;
-                    if (ps->type == NET_PACKET_PLAYER_SYNC && ps->player_idx < NET_MAX_CLIENTS) {
+                    if (ps->type == NET_PACKET_PLAYER_SYNC && ps->player_idx < NET_MAX_RACERS) {
                         g_LastPlayerSync[ps->player_idx] = *ps;
                         g_HasNewPlayerSync[ps->player_idx] = true;
 

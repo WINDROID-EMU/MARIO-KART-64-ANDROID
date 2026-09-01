@@ -11,6 +11,7 @@ extern "C" {
 
 #define NET_DEFAULT_PORT 27100
 #define NET_MAX_CLIENTS  4
+#define NET_MAX_RACERS   8
 
 enum NetMode {
     NET_MODE_NONE = 0,
@@ -49,10 +50,10 @@ typedef struct {
     uint16_t randomSeed;
 } NetGameStatePacket;
 
-// Estrutura de sincronização de física e efeitos dos karts (Posição, Velocidade, Efeitos, Dano, Itens)
+// Estrutura de sincronização de física e efeitos dos karts (Posição, Velocidade, Efeitos, Dano, Itens, Ranking)
 typedef struct {
     uint8_t  type; // 5 = NET_PACKET_PLAYER_SYNC
-    uint8_t  player_idx;
+    uint8_t  player_idx; // 0..7
     float    pos[3];
     float    velocity[3];
     int16_t  rotation[3];
@@ -60,6 +61,9 @@ typedef struct {
     int32_t  triggers;
     int16_t  currentItem;
     uint16_t kartGraphics;
+    uint8_t  rank;
+    uint8_t  lap;
+    float    lapCompletion;
 } NetPlayerSyncPacket;
 
 // Variáveis globais de estado de rede
@@ -95,7 +99,19 @@ void netSendGameState(
     const uint8_t charGridIsSelected[4],
     uint16_t randomSeed
 );
-void netSendPlayerSync(uint8_t playerIdx, const float pos[3], const float velocity[3], const int16_t rotation[3], uint32_t effects, int32_t triggers, int16_t currentItem, uint16_t kartGraphics);
+void netSendPlayerSync(
+    uint8_t playerIdx,
+    const float pos[3],
+    const float velocity[3],
+    const int16_t rotation[3],
+    uint32_t effects,
+    int32_t triggers,
+    int16_t currentItem,
+    uint16_t kartGraphics,
+    uint8_t rank,
+    uint8_t lap,
+    float lapCompletion
+);
 bool netPopGameState(NetGameStatePacket* out);
 bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out);
 

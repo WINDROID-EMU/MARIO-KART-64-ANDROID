@@ -60,6 +60,11 @@ extern s8  gPlayerSelectMenuSelection;
 extern u16 gRandomSeed16;
 extern s32 D_80164A28;
 extern s8 gDemoUseController;
+extern s32 gGPCurrentRaceRankByPlayerId[];
+extern s16 gGPCurrentRacePlayerIdByRank[];
+extern s16 gGPCurrentRaceCharacterIdByRank[];
+extern s32 gLapCountByPlayerId[];
+extern f32 gLapCompletionPercentByPlayerId[];
 
 // Declarations (not in this file)
 void func_80091B78(void);
@@ -460,22 +465,53 @@ void read_controllers(void) {
             );
         }
 
-        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos e item do kart local
-        if (gGamestate == RACING && localIdx >= 0 && localIdx < 4) {
-            Player* lp = &gPlayers[localIdx];
-            float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
-            float pVel[3] = { lp->velocity[0], lp->velocity[1], lp->velocity[2] };
-            int16_t pRot[3] = { (int16_t)lp->rotation[0], (int16_t)lp->rotation[1], (int16_t)lp->rotation[2] };
-            netSendPlayerSync(
-                (uint8_t)localIdx,
-                pPos,
-                pVel,
-                pRot,
-                lp->effects,
-                lp->triggers,
-                lp->currentItemCopy,
-                lp->kartGraphics
-            );
+        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos, itens e ranking dos karts
+        if (gGamestate == RACING) {
+            if (g_NetMode == NET_MODE_HOST) {
+                // Host envia seu próprio kart (kart 0) e todos os oponentes da CPU (karts 2..7)
+                for (int k = 0; k < 8; k++) {
+                    if (k != 1) { // 1 é o Client (Player 2)
+                        Player* lp = &gPlayers[k];
+                        if (lp->type & PLAYER_EXISTS) {
+                            float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
+                            float pVel[3] = { lp->velocity[0], lp->velocity[1], lp->velocity[2] };
+                            int16_t pRot[3] = { (int16_t)lp->rotation[0], (int16_t)lp->rotation[1], (int16_t)lp->rotation[2] };
+                            netSendPlayerSync(
+                                (uint8_t)k,
+                                pPos,
+                                pVel,
+                                pRot,
+                                lp->effects,
+                                lp->triggers,
+                                lp->currentItemCopy,
+                                lp->kartGraphics,
+                                (uint8_t)gGPCurrentRaceRankByPlayerId[k],
+                                (uint8_t)gLapCountByPlayerId[k],
+                                gLapCompletionPercentByPlayerId[k]
+                            );
+                        }
+                    }
+                }
+            } else if (g_NetMode == NET_MODE_JOIN && localIdx >= 0 && localIdx < 4) {
+                // Client envia seu próprio kart (Player 2)
+                Player* lp = &gPlayers[localIdx];
+                float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
+                float pVel[3] = { lp->velocity[0], lp->velocity[1], lp->velocity[2] };
+                int16_t pRot[3] = { (int16_t)lp->rotation[0], (int16_t)lp->rotation[1], (int16_t)lp->rotation[2] };
+                netSendPlayerSync(
+                    (uint8_t)localIdx,
+                    pPos,
+                    pVel,
+                    pRot,
+                    lp->effects,
+                    lp->triggers,
+                    lp->currentItemCopy,
+                    lp->kartGraphics,
+                    (uint8_t)gGPCurrentRaceRankByPlayerId[localIdx],
+                    (uint8_t)gLapCountByPlayerId[localIdx],
+                    gLapCompletionPercentByPlayerId[localIdx]
+                );
+            }
         }
 
         // Processa eventos e pacotes da rede
@@ -519,10 +555,10 @@ void read_controllers(void) {
             }
         }
 
-        // Durante a corrida, aplica a sincronização de física, efeitos e itens dos karts remotos
+        // Durante a corrida, aplica a sincronização de física, efeitos, itens e ranking de todos os karts remotos e oponentes
         if (gGamestate == RACING) {
             D_80164A28 = 0; // Garante FOV 1P padrão (sem esticar ou dar zoom no personagem)
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < 8; i++) {
                 if (i != localIdx) {
                     NetPlayerSyncPacket ps;
                     if (netPopPlayerSync(i, &ps)) {
@@ -540,7 +576,18 @@ void read_controllers(void) {
                         rp->triggers |= ps.triggers;
                         rp->kartGraphics = ps.kartGraphics;
 
-                        // Se o jogador remoto ativou um item (como cascos triplos, bananas, etc.)
+                        // Se for o cliente recebendo dados autoritativos do host (kart 0 ou oponentes bots 2..7)
+                        if (g_NetMode == NET_MODE_JOIN) {
+                            gGPCurrentRaceRankByPlayerId[i] = (s32)ps.rank;
+                            gLapCountByPlayerId[i] = (s32)ps.lap;
+                            gLapCompletionPercentByPlayerId[i] = ps.lapCompletion;
+                            if (ps.rank < 8) {
+                                gGPCurrentRacePlayerIdByRank[ps.rank] = (s16)i;
+                                gGPCurrentRaceCharacterIdByRank[ps.rank] = rp->characterId;
+                            }
+                        }
+
+                        // Se o jogador/oponente ativou um item (como cascos triplos, bananas, etc.)
                         if (ps.currentItem == ITEM_NONE && rp->currentItemCopy != ITEM_NONE) {
                             player_use_item(rp);
                             rp->currentItemCopy = ITEM_NONE;

@@ -59,6 +59,7 @@ extern s8  gMainMenuSelection;
 extern s8  gPlayerSelectMenuSelection;
 extern u16 gRandomSeed16;
 extern s32 D_80164A28;
+extern s8 gDemoUseController;
 
 // Declarations (not in this file)
 void func_80091B78(void);
@@ -480,10 +481,17 @@ void read_controllers(void) {
         // Processa eventos e pacotes da rede
         netUpdate();
 
+        if (g_NetMode != NET_MODE_NONE) {
+            gDemoMode = 0;
+            gDemoUseController = 0;
+        }
+
         // Se for Client, aplica atualizações completas de menu e estado vindas do Host
         if (g_NetMode == NET_MODE_JOIN) {
             NetGameStatePacket gs;
             if (netPopGameState(&gs)) {
+                gDemoMode = 0;
+                gDemoUseController = 0;
                 gMenuSelection = (s32)gs.menuSelection;
                 gSubMenuSelection = (s8)gs.subMenuSelection;
                 gMainMenuSelection = (s8)gs.mainMenuSelection;
@@ -502,12 +510,10 @@ void read_controllers(void) {
                 }
                 gRandomSeed16 = gs.randomSeed;
 
-                // Se o Host iniciou a corrida (RACING) e o cliente ainda está nos menus, transiciona corretamente
-                if (gs.gamestate == RACING && gGamestate != RACING) {
+                // Transiciona para o estado do Host
+                if (gGamestate != gs.gamestate) {
                     gIsInQuitToMenuTransition = 0;
                     gQuitToMenuTransitionCounter = 0;
-                    gGamestateNext = RACING;
-                } else if (gs.gamestate != RACING && gGamestate != RACING && gGamestateNext != gs.gamestate) {
                     gGamestateNext = gs.gamestate;
                 }
             }

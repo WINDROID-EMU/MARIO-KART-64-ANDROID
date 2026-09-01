@@ -43,6 +43,7 @@
 
 #include "stdio.h"
 #include "port/Engine.h"
+#include "net/net.h"
 #include "port/Game.h"
 #include "engine/editor/Editor.h"
 
@@ -5248,6 +5249,13 @@ void func_8009CE64(s32 arg0) {
                     gMenuSelection -= 1;
                     break;
                 case 2:
+                    if (g_NetMode != NET_MODE_NONE) {
+                        gMenuSelection = START_MENU;
+                        gFadeModeSelection = 2;
+                        gDemoMode = 0;
+                        gDemoUseController = 0;
+                        break;
+                    }
                     gDemoMode = 1;
                     gDemoUseController = 1;
                     gGamestateNext = 4;

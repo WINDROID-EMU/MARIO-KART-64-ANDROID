@@ -3131,8 +3131,15 @@ void func_80050E34(s32 playerId, s32 arg1) {
     characterId = player->characterId;
     objectIndex = D_8018CE10[playerId].objectIndex;
 
+    s32 localPlayerId = 0;
+    if (g_NetMode != NET_MODE_NONE && g_NetPlayerIndex >= 0 && g_NetPlayerIndex < 4) {
+        localPlayerId = g_NetPlayerIndex;
+    }
+
     if (gPlayerCountSelection1 == 1) {
         spC4 = 0x00000012;
+    } else if (g_NetMode != NET_MODE_NONE) {
+        spC4 = 0x00000020; // Posiciona abaixo do cronômetro/tempo
     } else {
         spC4 = 0x00000078;
     }
@@ -3183,7 +3190,7 @@ void func_80050E34(s32 playerId, s32 arg1) {
             func_80042330_unchanged(spD0 + 0x1B, (spC4 + spCC) + 4, 0U, 1.0f);
         }
         gSPDisplayList(gDisplayListHead++, D_0D006950);
-        if ((player == gPlayerOne) && (gScreenModeSelection == SCREEN_MODE_1P)) {
+        if ((player == &gPlayerOne[localPlayerId])) {
             gSPDisplayList(gDisplayListHead++, D_0D007A40);
             func_8004B35C(D_8018D3E4, D_8018D3E8, D_8018D3EC, 0x000000FF);
             func_80044924(common_texture_character_portrait_border, 0x00000020, 0x00000020);

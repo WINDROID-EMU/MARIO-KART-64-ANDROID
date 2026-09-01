@@ -43,6 +43,7 @@
 #include <assets/models/tracks/frappe_snowland/frappe_snowland_data.h>
 #include "port/Game.h"
 #include "port/Engine.h"
+#include "net/net.h"
 
 #include "engine/Matrix.h"
 #include "engine/tracks/Track.h"
@@ -2404,8 +2405,13 @@ void draw_item_window(s32 playerId) {
     object = &gObjectList[objectIndex];
     if (object->state >= 2) {
         temp_v0 = &playerHUD[playerId];
-        func_8004E4CC(temp_v0->slideItemBoxX + temp_v0->itemBoxX, temp_v0->slideItemBoxY + temp_v0->itemBoxY,
-                      (u8*) object->activeTLUT, object->activeTexture);
+        s32 posX = temp_v0->slideItemBoxX + temp_v0->itemBoxX;
+        s32 posY = temp_v0->slideItemBoxY + temp_v0->itemBoxY;
+        if (g_NetMode != NET_MODE_NONE) {
+            posX = 0x00A0;
+            posY = temp_v0->slideItemBoxY - 0x0020;
+        }
+        func_8004E4CC(posX, posY, (u8*) object->activeTLUT, object->activeTexture);
     }
 }
 

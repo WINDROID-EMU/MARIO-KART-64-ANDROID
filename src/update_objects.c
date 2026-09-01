@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "update_objects.h"
+#include "net/net.h"
 #include "main.h"
 #include "memory.h"
 #include "camera.h"
@@ -2526,7 +2527,7 @@ void func_8007B34C(s32 playerId) {
             func_8007B254(temp_s0, playerId);
             break;
         case 2:
-            if (gActiveScreenMode == 0) {
+            if (g_NetMode != NET_MODE_NONE || gActiveScreenMode == 0) {
                 s16_step_up_towards(&playerHUD[playerId].slideItemBoxY, 0x0040, 4);
                 if (playerHUD[playerId].slideItemBoxY == 0x0040) {
                     object_next_state(temp_s0);
@@ -2580,7 +2581,7 @@ void func_8007B34C(s32 playerId) {
             set_and_run_timer_object(temp_s0, 0x00000014);
             break;
         case 11:
-            if (gActiveScreenMode == 0) {
+            if (g_NetMode != NET_MODE_NONE || gActiveScreenMode == 0) {
                 if (s16_step_down_towards(&playerHUD[playerId].slideItemBoxY, 0, 4) != 0) {
                     object_next_state(temp_s0);
                 }

@@ -29,6 +29,7 @@
 #include <assets/textures/boo_frames.h>
 #include "port/Game.h"
 #include "port/Engine.h"
+#include "net/net.h"
 #include "engine/editor/Editor.h"
 #include "engine/tracks/Track.h"
 #include "engine/sky/Sky.h"
@@ -51,6 +52,18 @@ void init_hud(void) {
         case SCREEN_MODE_3P_4P_SPLITSCREEN:
             init_hud_three_four_player();
             break;
+    }
+
+    if (g_NetMode != NET_MODE_NONE) {
+        for (int p = 0; p < 4; p++) {
+            playerHUD[p].itemBoxX = 0x00A0;
+            playerHUD[p].itemBoxY = -0x0020;
+            playerHUD[p].slideItemBoxX = 0;
+            playerHUD[p].slideItemBoxY = 0;
+            playerHUD[p].unk_4A = 0x00A0;
+            playerHUD[p].unk_4C = 0x0078;
+            playerHUD[p].rankScaling = 0.5f;
+        }
     }
     func_80070148();
 }

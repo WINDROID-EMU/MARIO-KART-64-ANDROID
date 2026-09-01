@@ -34,7 +34,7 @@ cmake -B build-android -G Ninja \
     -DBUILD_NAUDIO=ON \
     -DCMAKE_BUILD_TYPE=Release
 
-cmake --build build-android --target libSpaghettify.so --parallel $(nproc)
+cmake --build build-android --target Spaghettify --parallel $(nproc)
 
 echo "=== [3/4] Copiando libSpaghettify.so para o projeto Android ==="
 mkdir -p android/app/libs/arm64-v8a

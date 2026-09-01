@@ -106,7 +106,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Native Library (libSpaghettify.so)
-        run: cmake --build build-android --target libSpaghettify.so --parallel $(nproc)
+        run: cmake --build build-android --target Spaghettify --parallel $(nproc)
 
       # ── 8. Copy .so to Android project ────────────────────────────────────────
       - name: Copy Native Library to Android Project

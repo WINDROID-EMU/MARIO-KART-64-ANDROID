@@ -964,27 +964,40 @@ public class SDLActivity extends Activity implements View.OnSystemUiVisibilityCh
 
         getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(this);
 
-        // Get filename from "Open with" of another application
-        Intent intent = getIntent();
-        if (intent != null) {
-            if (intent.getData() != null) {
-                String filename = intent.getData().getPath();
-                if (filename != null) {
-                    Log.v(TAG, "Got filename: " + filename);
-                    SDLActivity.onNativeDropFile(filename);
-                }
+        // Handle netplay or intent parameters
+        handleNetplayIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNetplayIntent(intent);
+    }
+
+    private void handleNetplayIntent(Intent intent) {
+        if (intent == null) return;
+        if (intent.getData() != null) {
+            String filename = intent.getData().getPath();
+            if (filename != null) {
+                Log.v(TAG, "Got filename: " + filename);
+                SDLActivity.onNativeDropFile(filename);
             }
-            int netMode = intent.getIntExtra("extra_net_mode", 0);
-            String netIp = intent.getStringExtra("extra_net_ip");
-            if (netIp == null) netIp = "";
-            int netPort = intent.getIntExtra("extra_net_port", 27100);
-            if (netMode != 0) {
-                Log.i(TAG, "Configurando Netplay: mode=" + netMode + " IP=" + netIp + " Port=" + netPort);
-                try {
-                    nativeSetNetMode(netMode, netIp, netPort);
-                } catch (UnsatisfiedLinkError e) {
-                    Log.e(TAG, "Erro ao chamar nativeSetNetMode", e);
-                }
+        }
+        int netMode = intent.getIntExtra("extra_net_mode", 0);
+        String netIp = intent.getStringExtra("extra_net_ip");
+        if (netIp == null) netIp = "";
+        int netPort = intent.getIntExtra("extra_net_port", 27100);
+        if (netMode != 0) {
+            Log.i(TAG, "Configurando Netplay: mode=" + netMode + " IP=" + netIp + " Port=" + netPort);
+            try {
+                nativeSetNetMode(netMode, netIp, netPort);
+                String msg = (netMode == 1)
+                        ? "🎮 Servidor Host Netplay iniciado na porta " + netPort
+                        : "⚡ Conectando ao Host " + netIp + ":" + netPort;
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+            } catch (UnsatisfiedLinkError e) {
+                Log.e(TAG, "Erro ao chamar nativeSetNetMode", e);
             }
         }
     }

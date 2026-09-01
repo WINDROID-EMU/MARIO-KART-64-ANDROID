@@ -43,8 +43,26 @@
 #include "engine/Matrix.h"
 #include "engine/TrackBrowser.h"
 
+extern s32 gModeSelection;
+extern s32 gCCSelection;
+extern s32 gPlayerCountSelection1;
+extern s8  gPlayerCount;
+extern s16 gCurrentCourseId;
+extern s8  gCupSelection;
+extern s8  gCourseIndexInCup;
+extern s8  gCharacterSelections[4];
+extern s8  gCharacterGridSelections[4];
+extern bool gCharacterGridIsSelected[4];
+extern s32 gMenuSelection;
+extern s8  gSubMenuSelection;
+extern s8  gMainMenuSelection;
+extern s8  gPlayerSelectMenuSelection;
+extern u16 gRandomSeed16;
+extern s32 D_80164A28;
+
 // Declarations (not in this file)
 void func_80091B78(void);
+void player_use_item(Player* player);
 
 void audio_init();
 
@@ -398,25 +416,141 @@ void read_controllers(void) {
     osContGetReadData(gControllerPads);
 
     if (g_NetMode != NET_MODE_NONE) {
-        // Envia o input local do jogador associado a este aparelho
+        // Salva a entrada de toque / controle local deste aparelho
+        OSContPad localPad = gControllerPads[0];
         int localIdx = g_NetPlayerIndex;
+
+        // Transmite o input local deste jogador para a rede
         if (localIdx >= 0 && localIdx < 4) {
             netSendLocalInput(
                 (uint8_t)localIdx,
-                gControllerPads[localIdx].button,
-                gControllerPads[localIdx].stick_x,
-                gControllerPads[localIdx].stick_y,
-                gControllerPads[localIdx].right_stick_x,
-                gControllerPads[localIdx].right_stick_y
+                localPad.button,
+                localPad.stick_x,
+                localPad.stick_y,
+                localPad.right_stick_x,
+                localPad.right_stick_y
             );
         }
 
-        // Processa eventos de rede recebidos
+        // Se for Host, sincroniza o estado completo do jogo (Menu, Grid de Personagens, Pistas, RNG) a cada frame
+        if (g_NetMode == NET_MODE_HOST) {
+            uint8_t charSels[4] = { 0 }, gridSels[4] = { 0 }, gridIsSel[4] = { 0 };
+            for (int i = 0; i < 4; i++) {
+                charSels[i] = (uint8_t)gCharacterSelections[i];
+                gridSels[i] = (uint8_t)gCharacterGridSelections[i];
+                gridIsSel[i] = (uint8_t)gCharacterGridIsSelected[i];
+            }
+            netSendGameState(
+                (uint8_t)gGamestate,
+                (uint8_t)gMenuSelection,
+                (uint8_t)gSubMenuSelection,
+                (uint8_t)gMainMenuSelection,
+                (uint8_t)gPlayerSelectMenuSelection,
+                (uint8_t)gModeSelection,
+                (uint8_t)gCCSelection,
+                (uint8_t)gPlayerCountSelection1,
+                gCurrentCourseId,
+                (uint8_t)gCupSelection,
+                (uint8_t)gCourseIndexInCup,
+                charSels,
+                gridSels,
+                gridIsSel,
+                gRandomSeed16
+            );
+        }
+
+        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos e item do kart local
+        if (gGamestate == RACING && localIdx >= 0 && localIdx < 4) {
+            Player* lp = &gPlayers[localIdx];
+            float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
+            float pVel[3] = { lp->velocity[0], lp->velocity[1], lp->velocity[2] };
+            int16_t pRot[3] = { (int16_t)lp->rotation[0], (int16_t)lp->rotation[1], (int16_t)lp->rotation[2] };
+            netSendPlayerSync(
+                (uint8_t)localIdx,
+                pPos,
+                pVel,
+                pRot,
+                lp->effects,
+                lp->triggers,
+                lp->currentItemCopy,
+                lp->kartGraphics
+            );
+        }
+
+        // Processa eventos e pacotes da rede
         netUpdate();
 
-        // Preenche os pads remotos com os dados sincronizados
+        // Se for Client, aplica atualizações completas de menu e estado vindas do Host
+        if (g_NetMode == NET_MODE_JOIN) {
+            NetGameStatePacket gs;
+            if (netPopGameState(&gs)) {
+                gMenuSelection = (s32)gs.menuSelection;
+                gSubMenuSelection = (s8)gs.subMenuSelection;
+                gMainMenuSelection = (s8)gs.mainMenuSelection;
+                gPlayerSelectMenuSelection = (s8)gs.playerSelectMenuSelection;
+                gModeSelection = (s32)gs.modeSelection;
+                gCCSelection = (s32)gs.ccSelection;
+                gPlayerCountSelection1 = (s32)gs.playerCountSelection;
+                gPlayerCount = (s8)gs.playerCountSelection;
+                gCurrentCourseId = gs.courseId;
+                gCupSelection = (s8)gs.cupSelection;
+                gCourseIndexInCup = (s8)gs.courseIndexInCup;
+                for (int c = 0; c < 4; c++) {
+                    gCharacterSelections[c] = (s8)gs.characterSelections[c];
+                    gCharacterGridSelections[c] = (s8)gs.characterGridSelections[c];
+                    gCharacterGridIsSelected[c] = (bool)gs.characterGridIsSelected[c];
+                }
+                gRandomSeed16 = gs.randomSeed;
+
+                // Se o Host iniciou a corrida (RACING) e o cliente ainda está nos menus, transiciona corretamente
+                if (gs.gamestate == RACING && gGamestate != RACING) {
+                    gIsInQuitToMenuTransition = 0;
+                    gQuitToMenuTransitionCounter = 0;
+                    gGamestateNext = RACING;
+                } else if (gs.gamestate != RACING && gGamestate != RACING && gGamestateNext != gs.gamestate) {
+                    gGamestateNext = gs.gamestate;
+                }
+            }
+        }
+
+        // Durante a corrida, aplica a sincronização de física, efeitos e itens dos karts remotos
+        if (gGamestate == RACING) {
+            D_80164A28 = 0; // Garante FOV 1P padrão (sem esticar ou dar zoom no personagem)
+            for (int i = 0; i < 4; i++) {
+                if (i != localIdx) {
+                    NetPlayerSyncPacket ps;
+                    if (netPopPlayerSync(i, &ps)) {
+                        Player* rp = &gPlayers[i];
+                        rp->pos[0] = ps.pos[0];
+                        rp->pos[1] = ps.pos[1];
+                        rp->pos[2] = ps.pos[2];
+                        rp->velocity[0] = ps.velocity[0];
+                        rp->velocity[1] = ps.velocity[1];
+                        rp->velocity[2] = ps.velocity[2];
+                        rp->rotation[0] = ps.rotation[0];
+                        rp->rotation[1] = ps.rotation[1];
+                        rp->rotation[2] = ps.rotation[2];
+                        rp->effects = ps.effects;
+                        rp->triggers |= ps.triggers;
+                        rp->kartGraphics = ps.kartGraphics;
+
+                        // Se o jogador remoto ativou um item (como cascos triplos, bananas, etc.)
+                        if (ps.currentItem == ITEM_NONE && rp->currentItemCopy != ITEM_NONE) {
+                            player_use_item(rp);
+                            rp->currentItemCopy = ITEM_NONE;
+                        } else if (ps.currentItem != ITEM_NONE) {
+                            rp->currentItemCopy = (s16)ps.currentItem;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Popula gControllerPads para todos os 4 slots de controle da engine
         for (int i = 0; i < 4; i++) {
-            if (i != localIdx) {
+            if (i == localIdx) {
+                gControllerPads[i] = localPad;
+            } else {
                 netGetPadData(
                     i,
                     &gControllerPads[i].button,
@@ -778,53 +912,67 @@ void race_logic_loop(void) {
         select_framebuffer();
     }
 
-    switch (gActiveScreenMode) {
-        case SCREEN_MODE_1P:
-            render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_1P_PLAYER_ONE, 0, 0);
-            break;
-        case SCREEN_MODE_2P_SPLITSCREEN_HORIZONTAL:
-            if (gPlayerWinningIndex == 0) {
-                // In VS Mode the winning player's viewport takes over the whole screen.
-                // Rendering the winning player last places their screen above the other screens
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_TWO, 4, 1);
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_ONE, 3, 0);
-            } else {
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_ONE, 3, 0);
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_TWO, 4, 1);
-            }
-            break;
-        case SCREEN_MODE_2P_SPLITSCREEN_VERTICAL:
-            if (gPlayerWinningIndex == 0) {
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_TWO, 2, 1);
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_ONE, 1, 0);
-            } else {
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_ONE, 1, 0);
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_TWO, 2, 1);
-            }
-            break;
-        case SCREEN_MODE_3P_4P_SPLITSCREEN:
-            if (gPlayerWinningIndex == 0) {
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
-                render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
-                render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
-            } else if (gPlayerWinningIndex == 1) {
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
-                render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
-                render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
-            } else if (gPlayerWinningIndex == 2) {
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
-                render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
-                render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
-            } else {
-                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
-                render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
-                render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
-                render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
-            }
-            break;
+    if (g_NetMode != NET_MODE_NONE) {
+        int localIdx = g_NetPlayerIndex;
+        if (localIdx >= 0 && localIdx < 4) {
+            ScreenContext* localScreen = &gScreenContexts[localIdx];
+            localScreen->screenWidth = SCREEN_WIDTH;
+            localScreen->screenHeight = SCREEN_HEIGHT;
+            localScreen->screenStartX = 160;
+            localScreen->screenStartY = 120;
+            gScreenAspect = 1.33333334f;
+
+            render_screens(localScreen, RENDER_SCREEN_MODE_1P_PLAYER_ONE, 0, localIdx);
+        }
+    } else {
+        switch (gActiveScreenMode) {
+            case SCREEN_MODE_1P:
+                render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_1P_PLAYER_ONE, 0, 0);
+                break;
+            case SCREEN_MODE_2P_SPLITSCREEN_HORIZONTAL:
+                if (gPlayerWinningIndex == 0) {
+                    // In VS Mode the winning player's viewport takes over the whole screen.
+                    // Rendering the winning player last places their screen above the other screens
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_TWO, 4, 1);
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_ONE, 3, 0);
+                } else {
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_ONE, 3, 0);
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_HORIZONTAL_PLAYER_TWO, 4, 1);
+                }
+                break;
+            case SCREEN_MODE_2P_SPLITSCREEN_VERTICAL:
+                if (gPlayerWinningIndex == 0) {
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_TWO, 2, 1);
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_ONE, 1, 0);
+                } else {
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_ONE, 1, 0);
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_2P_VERTICAL_PLAYER_TWO, 2, 1);
+                }
+                break;
+            case SCREEN_MODE_3P_4P_SPLITSCREEN:
+                if (gPlayerWinningIndex == 0) {
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
+                    render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
+                    render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
+                } else if (gPlayerWinningIndex == 1) {
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
+                    render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
+                    render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
+                } else if (gPlayerWinningIndex == 2) {
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
+                    render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
+                    render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
+                } else {
+                    render_screens(gScreenOneCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_ONE, 8, 0);
+                    render_screens(gScreenTwoCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_TWO, 9, 1);
+                    render_screens(gScreenThreeCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_THREE, 10, 2);
+                    render_screens(gScreenFourCtx, RENDER_SCREEN_MODE_3P_4P_PLAYER_FOUR, 11, 3);
+                }
+                break;
+        }
     }
 
     display_debug_info();

@@ -38,6 +38,7 @@
 #include "data/some_data.h"
 #include <assets/textures/some_data.h>
 #include "port/Game.h"
+#include "net/net.h"
 #include "engine/Matrix.h"
 #include "engine/editor/Editor.h"
 #include "port/interpolation/FrameInterpolation.h"
@@ -730,16 +731,20 @@ void func_80058F78(void) {
 
         set_matrix_hud_screen();
         if ((!gDemoMode) && (gIsHUDVisible != 0) && (D_801657D8 == 0)) {
-            draw_item_window(PLAYER_ONE);
+            s32 localPlayerId = PLAYER_ONE;
+            if (g_NetMode != NET_MODE_NONE && g_NetPlayerIndex >= 0 && g_NetPlayerIndex < 4) {
+                localPlayerId = g_NetPlayerIndex;
+            }
+            draw_item_window(localPlayerId);
             if (gHUDModes != 2) {
-                render_hud_timer(PLAYER_ONE);
-                draw_simplified_lap_count(PLAYER_ONE);
-                func_8004EB38(0);
+                render_hud_timer(localPlayerId);
+                draw_simplified_lap_count(localPlayerId);
+                func_8004EB38(localPlayerId);
                 if (D_801657E6 != false) {
                     if (CVarGetInteger("gEnableDigitalSpeedometer", false) == true) {
-                        render_digital_speedometer(PLAYER_ONE);
+                        render_digital_speedometer(localPlayerId);
                     }
-                    render_speedometer(PLAYER_ONE);
+                    render_speedometer(localPlayerId);
                 }
             }
         }

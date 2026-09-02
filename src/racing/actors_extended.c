@@ -36,18 +36,20 @@ void copy_collision(struct Collision* src, struct Collision* dest) {
 void triple_shell_actor_collide_with_player(struct ShellActor* shell, s32 shellType) {
     TripleShellParent* parent = (TripleShellParent*) GET_ACTOR(shell->parentIndex);
 
-    parent->shellsAvailable--;
+    if (parent != NULL) {
+        parent->shellsAvailable--;
 
-    switch ((s16) shell->shellId) {
-        case 0:
-            parent->shellIndices[0] = -1.0f;
-            break;
-        case 1:
-            parent->shellIndices[1] = -1.0f;
-            break;
-        case 2:
-            parent->shellIndices[2] = -1.0f;
-            break;
+        switch ((s16) shell->shellId) {
+            case 0:
+                parent->shellIndices[0] = -1.0f;
+                break;
+            case 1:
+                parent->shellIndices[1] = -1.0f;
+                break;
+            case 2:
+                parent->shellIndices[2] = -1.0f;
+                break;
+        }
     }
 
     shell->flags = 0x8000; // bitflag
@@ -68,6 +70,7 @@ void triple_shell_actor_collide_with_player(struct ShellActor* shell, s32 shellT
 // Sets velocities for a banana, used when a racer runs into
 // a banana bunch.
 void func_802B039C(struct BananaActor* banana) {
+    if (banana == NULL) return;
     banana->state = DROPPED_BANANA;
     banana->unk_04 = 0x00B4;
     banana->velocity[0] = ((f32) (random_int(0x00C8) - 0x64) * 0.015);
@@ -80,8 +83,10 @@ void func_802B0464(s16 bananaIndex) {
 
     if (bananaIndex != -1) {
         banana = (struct BananaActor*) GET_ACTOR(bananaIndex);
-        func_802B039C(banana);
-        func_802B0464(banana->youngerIndex);
+        if (banana != NULL) {
+            func_802B039C(banana);
+            func_802B0464(banana->youngerIndex);
+        }
     }
 }
 
@@ -90,8 +95,10 @@ void func_802B04E8(UNUSED struct BananaActor* arg0, s16 bananaIndex) {
 
     if (bananaIndex != -1) {
         banana = (struct BananaActor*) GET_ACTOR(bananaIndex);
-        func_802B039C(banana);
-        func_802B04E8(banana, banana->elderIndex);
+        if (banana != NULL) {
+            func_802B039C(banana);
+            func_802B04E8(banana, banana->elderIndex);
+        }
     }
 }
 
@@ -109,11 +116,13 @@ void destroy_banana_in_banana_bunch(struct BananaActor* banana) {
     banana->state = DESTROYED_BANANA;
     banana->velocity[1] = 3.0f;
     temp_v0_2 = (struct BananaBunchParent*) GET_ACTOR(banana->parentIndex);
-    temp_v0_2->bananaIndices[0] = -1;
-    temp_v0_2->bananaIndices[1] = -1;
-    temp_v0_2->bananaIndices[2] = -1;
-    temp_v0_2->bananaIndices[3] = -1;
-    temp_v0_2->bananaIndices[4] = -1;
+    if (temp_v0_2 != NULL) {
+        temp_v0_2->bananaIndices[0] = -1;
+        temp_v0_2->bananaIndices[1] = -1;
+        temp_v0_2->bananaIndices[2] = -1;
+        temp_v0_2->bananaIndices[3] = -1;
+        temp_v0_2->bananaIndices[4] = -1;
+    }
 }
 
 // Drop a banana from a banana bunch?

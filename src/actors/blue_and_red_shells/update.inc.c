@@ -439,7 +439,7 @@ void update_actor_red_blue_shell(struct ShellActor* shell) {
         case TRIPLE_RED_SHELL:
             player = &gPlayers[shell->playerId];
             parent = (TripleShellParent*) GET_ACTOR(shell->parentIndex);
-            if (parent->type != ACTOR_TRIPLE_RED_SHELL) {
+            if (parent == NULL || parent->type != ACTOR_TRIPLE_RED_SHELL) {
                 destroy_destructable_actor((struct Actor*) shell);
             } else {
                 shell->rotAngle += parent->rotVelocity;

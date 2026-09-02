@@ -742,13 +742,13 @@ void* GetTrack(void) {
 }
 
 struct Actor* CM_GetActor(size_t index) {
-    if (index >= 0 && index < GetWorld()->Actors.size()) {
+    if (index < GetWorld()->Actors.size()) {
         AActor* actor = GetWorld()->Actors[index].get();
-        return reinterpret_cast<struct Actor*>(reinterpret_cast<char*>(actor) + sizeof(void*));
-    } else {
-        throw std::runtime_error("GetActor() index out of bounds");
-        return NULL;
+        if (actor != nullptr) {
+            return reinterpret_cast<struct Actor*>(reinterpret_cast<char*>(actor) + sizeof(void*));
+        }
     }
+    return NULL;
 }
 
 size_t CM_FindActorIndex(Actor* actor) {

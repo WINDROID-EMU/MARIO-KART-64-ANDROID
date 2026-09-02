@@ -783,6 +783,14 @@ void func_8005902C(void) {
 void func_800590D4(void) {
     if (D_8018D2A4 != 0) {
         if (gModeSelection != BATTLE) {
+            if (g_NetMode != NET_MODE_NONE) {
+                s32 localIdx = 0;
+                if (g_NetPlayerIndex >= 0 && g_NetPlayerIndex < 4) {
+                    localIdx = g_NetPlayerIndex;
+                }
+                func_8004E800(localIdx);
+                return;
+            }
             switch (gPlayerCountSelection1) {
                 case 1:
                     if (gModeSelection != TIME_TRIALS) {

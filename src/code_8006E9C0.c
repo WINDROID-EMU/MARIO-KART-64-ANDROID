@@ -62,7 +62,11 @@ void init_hud(void) {
             playerHUD[p].slideItemBoxY = 0;
             playerHUD[p].unk_4A = 0x00A0;
             playerHUD[p].unk_4C = 0x0078;
-            playerHUD[p].rankScaling = 0.5f;
+            playerHUD[p].rankX = 52;
+            playerHUD[p].rankY = 0x00C8;
+            playerHUD[p].slideRankX = 0;
+            playerHUD[p].slideRankY = 0;
+            playerHUD[p].rankScaling = 1.0f;
         }
     }
     func_80070148();

@@ -65,6 +65,12 @@ extern s16 gGPCurrentRacePlayerIdByRank[];
 extern s16 gGPCurrentRaceCharacterIdByRank[];
 extern s32 gLapCountByPlayerId[];
 extern f32 gLapCompletionPercentByPlayerId[];
+extern u16 gNumPermanentActors;
+extern s32 D_8018D204;
+extern s32 gPlayerWinningIndex;
+struct Actor* CM_GetActor(size_t index);
+size_t CM_GetActorSize(void);
+s16 add_actor_to_empty_slot(Vec3f pos, Vec3s rot, Vec3f velocity, s16 actorType);
 
 // Declarations (not in this file)
 void func_80091B78(void);
@@ -465,7 +471,7 @@ void read_controllers(void) {
             );
         }
 
-        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos e itens dos karts
+        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos, itens dos karts, atores da pista e status da corrida
         if (gGamestate == RACING) {
             if (g_NetMode == NET_MODE_HOST) {
                 // Host envia seu próprio kart (kart 0) e todos os oponentes da CPU (karts 2..7)
@@ -492,6 +498,37 @@ void read_controllers(void) {
                         }
                     }
                 }
+
+                // Host sincroniza todos os atores dinâmicos/itens soltos na pista (bananas, cascos, etc.)
+                NetActorsSyncPacket actPkt;
+                actPkt.type = 6;
+                actPkt.actorCount = 0;
+                size_t totalActors = CM_GetActorSize();
+                for (size_t a = gNumPermanentActors; a < totalActors && actPkt.actorCount < NET_MAX_SYNC_ACTORS; a++) {
+                    struct Actor* act = CM_GetActor(a);
+                    if (act && (act->flags & ACTOR_IS_NOT_EXPIRED)) {
+                        NetActorData* d = &actPkt.actors[actPkt.actorCount++];
+                        d->type = act->type;
+                        d->flags = act->flags;
+                        d->state = act->state;
+                        d->rot[0] = act->rot[0];
+                        d->rot[1] = act->rot[1];
+                        d->rot[2] = act->rot[2];
+                        d->pos[0] = act->pos[0];
+                        d->pos[1] = act->pos[1];
+                        d->pos[2] = act->pos[2];
+                        d->velocity[0] = act->velocity[0];
+                        d->velocity[1] = act->velocity[1];
+                        d->velocity[2] = act->velocity[2];
+                    }
+                }
+                netSendActorsSync(&actPkt);
+
+                // Host envia status de voltas e finalização da corrida
+                uint8_t lapCounts[4] = { (uint8_t)playerHUD[0].lapCount, (uint8_t)playerHUD[1].lapCount, (uint8_t)playerHUD[2].lapCount, (uint8_t)playerHUD[3].lapCount };
+                uint8_t alsoLapCounts[4] = { (uint8_t)playerHUD[0].alsoLapCount, (uint8_t)playerHUD[1].alsoLapCount, (uint8_t)playerHUD[2].alsoLapCount, (uint8_t)playerHUD[3].alsoLapCount };
+                uint8_t raceComplete[4] = { (uint8_t)playerHUD[0].raceCompleteBool, (uint8_t)playerHUD[1].raceCompleteBool, (uint8_t)playerHUD[2].raceCompleteBool, (uint8_t)playerHUD[3].raceCompleteBool };
+                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, (uint8_t)D_8018D204, (uint8_t)gPlayerWinningIndex);
             } else if (g_NetMode == NET_MODE_JOIN && localIdx >= 0 && localIdx < 4) {
                 // Client envia seu próprio kart (Player 2)
                 Player* lp = &gPlayers[localIdx];
@@ -511,6 +548,12 @@ void read_controllers(void) {
                     0,
                     0.0f
                 );
+
+                // Client envia seu status de volta e conclusão para o Host
+                uint8_t lapCounts[4] = { (uint8_t)playerHUD[0].lapCount, (uint8_t)playerHUD[1].lapCount, 0, 0 };
+                uint8_t alsoLapCounts[4] = { (uint8_t)playerHUD[0].alsoLapCount, (uint8_t)playerHUD[1].alsoLapCount, 0, 0 };
+                uint8_t raceComplete[4] = { (uint8_t)playerHUD[0].raceCompleteBool, (uint8_t)playerHUD[1].raceCompleteBool, 0, 0 };
+                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, (uint8_t)D_8018D204, (uint8_t)gPlayerWinningIndex);
             }
         }
 
@@ -555,7 +598,7 @@ void read_controllers(void) {
             }
         }
 
-        // Durante a corrida, aplica a sincronização de física, efeitos e itens de todos os karts remotos e oponentes
+        // Durante a corrida, aplica a sincronização de física, efeitos, itens, atores e status da corrida
         if (gGamestate == RACING) {
             D_80164A28 = 0; // Garante FOV 1P padrão (sem esticar ou dar zoom no personagem)
             for (int i = 0; i < 8; i++) {
@@ -584,6 +627,75 @@ void read_controllers(void) {
                             rp->currentItemCopy = (s16)ps.currentItem;
                         }
                     }
+                }
+            }
+
+            // Client aplica sincronização de atores de itens soltos na pista vindos do Host
+            if (g_NetMode == NET_MODE_JOIN) {
+                NetActorsSyncPacket actPkt;
+                if (netPopActorsSync(&actPkt)) {
+                    size_t totalActors = CM_GetActorSize();
+                    size_t dynStart = gNumPermanentActors;
+                    for (uint8_t k = 0; k < actPkt.actorCount; k++) {
+                        NetActorData* d = &actPkt.actors[k];
+                        size_t targetIdx = dynStart + k;
+                        struct Actor* act = NULL;
+                        if (targetIdx < totalActors) {
+                            act = CM_GetActor(targetIdx);
+                        } else {
+                            Vec3f p = { d->pos[0], d->pos[1], d->pos[2] };
+                            Vec3s r = { d->rot[0], d->rot[1], d->rot[2] };
+                            Vec3f v = { d->velocity[0], d->velocity[1], d->velocity[2] };
+                            s16 newIdx = add_actor_to_empty_slot(p, r, v, d->type);
+                            if (newIdx >= 0) {
+                                act = CM_GetActor(newIdx);
+                            }
+                            totalActors = CM_GetActorSize();
+                        }
+                        if (act != NULL) {
+                            act->type = d->type;
+                            act->flags = d->flags;
+                            act->state = d->state;
+                            act->rot[0] = d->rot[0];
+                            act->rot[1] = d->rot[1];
+                            act->rot[2] = d->rot[2];
+                            act->pos[0] = d->pos[0];
+                            act->pos[1] = d->pos[1];
+                            act->pos[2] = d->pos[2];
+                            act->velocity[0] = d->velocity[0];
+                            act->velocity[1] = d->velocity[1];
+                            act->velocity[2] = d->velocity[2];
+                        }
+                    }
+                    for (size_t k = dynStart + actPkt.actorCount; k < totalActors; k++) {
+                        struct Actor* act = CM_GetActor(k);
+                        if (act) {
+                            act->flags = 0;
+                        }
+                    }
+                }
+            }
+
+            // Ambos aplicam sincronização de término de corrida e voltas completadas
+            NetRaceSyncPacket racePkt;
+            if (netPopRaceSync(&racePkt)) {
+                if (racePkt.raceEnded) {
+                    D_8018D204 = 1;
+                }
+                gPlayerWinningIndex = (s8)racePkt.winnerIndex;
+                for (int p = 0; p < 4; p++) {
+                    if (p != localIdx) {
+                        playerHUD[p].raceCompleteBool = (s8)racePkt.raceComplete[p];
+                        if (racePkt.lapCount[p] > playerHUD[p].lapCount) {
+                            playerHUD[p].lapCount = (s8)racePkt.lapCount[p];
+                        }
+                        if (racePkt.alsoLapCount[p] > playerHUD[p].alsoLapCount) {
+                            playerHUD[p].alsoLapCount = (s8)racePkt.alsoLapCount[p];
+                        }
+                    }
+                }
+                if (playerHUD[0].raceCompleteBool && playerHUD[1].raceCompleteBool) {
+                    D_8018D204 = 1;
                 }
             }
         }

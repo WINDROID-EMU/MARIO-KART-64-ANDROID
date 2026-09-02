@@ -56,7 +56,9 @@ enum NetPacketType {
     NET_PACKET_HANDSHAKE_ACK = 2,
     NET_PACKET_PAD_INPUT     = 3,
     NET_PACKET_GAME_STATE    = 4,
-    NET_PACKET_PLAYER_SYNC   = 5
+    NET_PACKET_PLAYER_SYNC   = 5,
+    NET_PACKET_ACTORS_SYNC   = 6,
+    NET_PACKET_RACE_SYNC     = 7
 };
 
 typedef struct {
@@ -70,6 +72,10 @@ static NetGameStatePacket  g_LastGameState = { 0 };
 static bool                g_HasNewGameState = false;
 static NetPlayerSyncPacket g_LastPlayerSync[NET_MAX_RACERS] = { 0 };
 static bool                g_HasNewPlayerSync[NET_MAX_RACERS] = { false };
+static NetActorsSyncPacket g_LastActorsSync = { 0 };
+static bool                g_HasNewActorsSync = false;
+static NetRaceSyncPacket   g_LastRaceSync = { 0 };
+static bool                g_HasNewRaceSync = false;
 
 void netInit(void) {
     if (enet_initialize() != 0) {
@@ -305,6 +311,42 @@ void netSendPlayerSync(
     }
 }
 
+void netSendActorsSync(const NetActorsSyncPacket* packet) {
+    if (g_NetMode != NET_MODE_HOST || g_Host == NULL || packet == NULL) {
+        return;
+    }
+    ENetPacket* enetPkt = enet_packet_create(packet, sizeof(NetActorsSyncPacket), ENET_PACKET_FLAG_UNSEQUENCED);
+    enet_host_broadcast(g_Host, 0, enetPkt);
+}
+
+void netSendRaceSync(
+    const uint8_t laps[4],
+    const uint8_t alsoLaps[4],
+    const uint8_t raceComplete[4],
+    uint8_t raceEnded,
+    uint8_t winnerIndex
+) {
+    if (g_NetMode == NET_MODE_NONE || g_Host == NULL) {
+        return;
+    }
+    NetRaceSyncPacket pkt;
+    pkt.type = NET_PACKET_RACE_SYNC;
+    for (int i = 0; i < 4; i++) {
+        pkt.lapCount[i] = laps ? laps[i] : 0;
+        pkt.alsoLapCount[i] = alsoLaps ? alsoLaps[i] : 0;
+        pkt.raceComplete[i] = raceComplete ? raceComplete[i] : 0;
+    }
+    pkt.raceEnded = raceEnded;
+    pkt.winnerIndex = winnerIndex;
+
+    ENetPacket* enetPkt = enet_packet_create(&pkt, sizeof(NetRaceSyncPacket), ENET_PACKET_FLAG_RELIABLE);
+    if (g_NetMode == NET_MODE_HOST) {
+        enet_host_broadcast(g_Host, 1, enetPkt);
+    } else if (g_NetMode == NET_MODE_JOIN && g_ServerPeer != NULL) {
+        enet_peer_send(g_ServerPeer, 1, enetPkt);
+    }
+}
+
 bool netPopGameState(NetGameStatePacket* out) {
     if (g_HasNewGameState && out != NULL) {
         *out = g_LastGameState;
@@ -318,6 +360,24 @@ bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out) {
     if (playerIdx >= 0 && playerIdx < NET_MAX_RACERS && g_HasNewPlayerSync[playerIdx] && out != NULL) {
         *out = g_LastPlayerSync[playerIdx];
         g_HasNewPlayerSync[playerIdx] = false;
+        return true;
+    }
+    return false;
+}
+
+bool netPopActorsSync(NetActorsSyncPacket* out) {
+    if (g_HasNewActorsSync && out != NULL) {
+        *out = g_LastActorsSync;
+        g_HasNewActorsSync = false;
+        return true;
+    }
+    return false;
+}
+
+bool netPopRaceSync(NetRaceSyncPacket* out) {
+    if (g_HasNewRaceSync && out != NULL) {
+        *out = g_LastRaceSync;
+        g_HasNewRaceSync = false;
         return true;
     }
     return false;
@@ -477,6 +537,28 @@ void netUpdate(void) {
                             for (int i = 1; i < NET_MAX_CLIENTS; i++) {
                                 if (g_ClientPeers[i] != NULL && g_ClientPeers[i] != event.peer) {
                                     enet_peer_send(g_ClientPeers[i], 0, fwdPkt);
+                                }
+                            }
+                        }
+                    }
+                } else if (event.packet->dataLength == sizeof(NetActorsSyncPacket)) {
+                    NetActorsSyncPacket* as = (NetActorsSyncPacket*)event.packet->data;
+                    if (as->type == NET_PACKET_ACTORS_SYNC) {
+                        g_LastActorsSync = *as;
+                        g_HasNewActorsSync = true;
+                    }
+                } else if (event.packet->dataLength == sizeof(NetRaceSyncPacket)) {
+                    NetRaceSyncPacket* rs = (NetRaceSyncPacket*)event.packet->data;
+                    if (rs->type == NET_PACKET_RACE_SYNC) {
+                        g_LastRaceSync = *rs;
+                        g_HasNewRaceSync = true;
+
+                        // Se Host recebeu de um cliente, retransmite aos outros clientes
+                        if (g_NetMode == NET_MODE_HOST) {
+                            ENetPacket* fwdPkt = enet_packet_create(rs, sizeof(NetRaceSyncPacket), ENET_PACKET_FLAG_RELIABLE);
+                            for (int i = 1; i < NET_MAX_CLIENTS; i++) {
+                                if (g_ClientPeers[i] != NULL && g_ClientPeers[i] != event.peer) {
+                                    enet_peer_send(g_ClientPeers[i], 1, fwdPkt);
                                 }
                             }
                         }

@@ -66,6 +66,34 @@ typedef struct {
     float    lapCompletion;
 } NetPlayerSyncPacket;
 
+#define NET_MAX_SYNC_ACTORS 24
+
+typedef struct {
+    int16_t type;
+    int16_t flags;
+    int16_t state;
+    int16_t rot[3];
+    float pos[3];
+    float velocity[3];
+} NetActorData;
+
+// Estrutura de sincronização de atores/itens soltos na pista (Bananas, Cascos, Caixas Falsas)
+typedef struct {
+    uint8_t type; // 6 = NET_PACKET_ACTORS_SYNC
+    uint8_t actorCount;
+    NetActorData actors[NET_MAX_SYNC_ACTORS];
+} NetActorsSyncPacket;
+
+// Estrutura de sincronização de status de corrida (Voltas de cada jogador e término da prova)
+typedef struct {
+    uint8_t type; // 7 = NET_PACKET_RACE_SYNC
+    uint8_t lapCount[4];
+    uint8_t alsoLapCount[4];
+    uint8_t raceComplete[4];
+    uint8_t raceEnded;
+    uint8_t winnerIndex;
+} NetRaceSyncPacket;
+
 // Variáveis globais de estado de rede
 extern int32_t  g_NetMode;
 extern int32_t  g_NetPlayerIndex; // 0 = Host (P1), 1 = Client 1 (P2), etc.
@@ -112,8 +140,19 @@ void netSendPlayerSync(
     uint8_t lap,
     float lapCompletion
 );
+void netSendActorsSync(const NetActorsSyncPacket* packet);
+void netSendRaceSync(
+    const uint8_t laps[4],
+    const uint8_t alsoLaps[4],
+    const uint8_t raceComplete[4],
+    uint8_t raceEnded,
+    uint8_t winnerIndex
+);
+
 bool netPopGameState(NetGameStatePacket* out);
 bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out);
+bool netPopActorsSync(NetActorsSyncPacket* out);
+bool netPopRaceSync(NetRaceSyncPacket* out);
 
 #ifdef __cplusplus
 }

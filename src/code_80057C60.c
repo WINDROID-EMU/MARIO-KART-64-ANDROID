@@ -1125,27 +1125,38 @@ void func_80059D00(void) {
     func_8005A380();
 
     if (D_801657AE == 0) {
-        switch (gScreenModeSelection) {
-            case SCREEN_MODE_1P:
-                randomize_seed_from_controller(PLAYER_ONE);
-                if (D_8018D214 == false) {
-                    func_80059820(PLAYER_ONE);
-                    func_8005B914();
-                    if (!gDemoMode) {
-                        // func_8007AA44(0);
+        if (g_NetMode != NET_MODE_NONE) {
+            randomize_seed_from_controller(PLAYER_ONE);
+            randomize_seed_from_controller(PLAYER_TWO);
+            func_80059820(PLAYER_ONE);
+            func_8005D0FC(PLAYER_ONE);
+            func_80059820(PLAYER_TWO);
+            func_8005D0FC(PLAYER_TWO);
+            func_80078C70();
+            func_8005D1F4(0);
+            func_8005D1F4(1);
+        } else {
+            switch (gScreenModeSelection) {
+                case SCREEN_MODE_1P:
+                    randomize_seed_from_controller(PLAYER_ONE);
+                    if (D_8018D214 == false) {
+                        func_80059820(PLAYER_ONE);
+                        func_8005B914();
+                        if (!gDemoMode) {
+                            // func_8007AA44(0);
+                        }
+                        func_80078C70();
+                        if (playerHUD[PLAYER_ONE].raceCompleteBool == 0) {
+                            func_8005C360((gPlayerOne->speed / 18.0f) * 216.0f);
+                        }
+                        func_8005D0FC(PLAYER_ONE);
+                    } else {
+                        func_80059820(PLAYER_ONE);
+                        func_80078C70();
+                        func_80059820(PLAYER_TWO);
+                        //func_80078C70();
                     }
-                    func_80078C70();
-                    if (playerHUD[PLAYER_ONE].raceCompleteBool == 0) {
-                        func_8005C360((gPlayerOne->speed / 18.0f) * 216.0f);
-                    }
-                    func_8005D0FC(PLAYER_ONE);
-                } else {
-                    func_80059820(PLAYER_ONE);
-                    func_80078C70();
-                    func_80059820(PLAYER_TWO);
-                    //func_80078C70();
-                }
-                break;
+                    break;
             case SCREEN_MODE_2P_SPLITSCREEN_VERTICAL:
                 randomize_seed_from_controller(PLAYER_ONE);
                 randomize_seed_from_controller(PLAYER_TWO);
@@ -1214,6 +1225,7 @@ void func_80059D00(void) {
                     func_8005D1F4(3);
                 }
                 break;
+            }
         }
         tick_objects();
         CM_TickObjects();

@@ -228,7 +228,8 @@ void netSendGameState(
     const uint8_t charSelections[4],
     const uint8_t charGridSelections[4],
     const uint8_t charGridIsSelected[4],
-    uint16_t randomSeed
+    uint16_t randomSeed,
+    uint8_t gotoMode
 ) {
     if (g_NetMode != NET_MODE_HOST || g_Host == NULL) {
         return;
@@ -263,6 +264,7 @@ void netSendGameState(
         memset(pkt.characterGridIsSelected, 0, sizeof(pkt.characterGridIsSelected));
     }
     pkt.randomSeed = randomSeed;
+    pkt.gotoMode = gotoMode;
 
     ENetPacket* enetPkt = enet_packet_create(&pkt, sizeof(NetGameStatePacket), ENET_PACKET_FLAG_RELIABLE);
     enet_host_broadcast(g_Host, 1, enetPkt);

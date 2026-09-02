@@ -48,6 +48,7 @@ typedef struct {
     uint8_t  characterGridSelections[4];
     uint8_t  characterGridIsSelected[4];
     uint16_t randomSeed;
+    uint8_t  gotoMode;   // gGotoMode: RACING=4, menus etc.
 } NetGameStatePacket;
 
 // Estrutura de sincronização de física e efeitos dos karts (Posição, Velocidade, Efeitos, Dano, Itens, Ranking)
@@ -125,7 +126,8 @@ void netSendGameState(
     const uint8_t charSelections[4],
     const uint8_t charGridSelections[4],
     const uint8_t charGridIsSelected[4],
-    uint16_t randomSeed
+    uint16_t randomSeed,
+    uint8_t gotoMode
 );
 void netSendPlayerSync(
     uint8_t playerIdx,

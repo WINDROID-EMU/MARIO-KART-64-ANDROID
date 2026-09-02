@@ -467,7 +467,8 @@ void read_controllers(void) {
                 charSels,
                 gridSels,
                 gridIsSel,
-                gRandomSeed16
+                gRandomSeed16,
+                (uint8_t)gGotoMode
             );
         }
 
@@ -594,6 +595,20 @@ void read_controllers(void) {
                     gIsInQuitToMenuTransition = 0;
                     gQuitToMenuTransitionCounter = 0;
                     gGamestateNext = gs.gamestate;
+                }
+
+                // Sincroniza gGotoMode do Host para o Client
+                // Quando o Host vai para a próxima pista (gGotoMode == RACING),
+                // precisamos acionar a transição correta no Client também
+                if (gs.gotoMode != 0 && gs.gotoMode != (uint8_t)gGotoMode) {
+                    gGotoMode = (s32)gs.gotoMode;
+                    // Se o Host definiu RACING (próxima pista) ou ENDING (tela final)
+                    // o Client deve entrar no mesmo fluxo de saída de corrida
+                    if (gs.gotoMode == RACING || gs.gotoMode == ENDING) {
+                        gIsInQuitToMenuTransition = 1;
+                        gQuitToMenuTransitionCounter = 5;
+                        gRaceState = RACE_EXIT;
+                    }
                 }
             }
         }

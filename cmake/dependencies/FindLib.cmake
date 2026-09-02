@@ -41,8 +41,6 @@ if(ANDROID)
   find_package(Iconv QUIET)
   if(Iconv_FOUND)
     target_link_libraries(${PROJECT_NAME} PRIVATE Iconv::Iconv)
-  else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE iconv)
   endif()
 endif()
 

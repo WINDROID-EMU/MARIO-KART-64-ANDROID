@@ -39,7 +39,8 @@
     "tinyxml2",
     "spdlog",
     "libogg",
-    "libvorbis"
+    "libvorbis",
+    "libiconv"
   ],
   "overrides": [
     {

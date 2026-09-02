@@ -36,9 +36,16 @@ cmake -B build-android -G Ninja \
 
 cmake --build build-android --target Spaghettify --parallel $(nproc)
 
-echo "=== [3/4] Copiando libSpaghettify.so para o projeto Android ==="
+echo "=== [3/4] Copiando e otimizando libSpaghettify.so (strip de símbolos) ==="
 mkdir -p android/app/libs/arm64-v8a
 cp build-android/libSpaghettify.so android/app/libs/arm64-v8a/libSpaghettify.so
+
+LLVM_STRIP=$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" -name "llvm-strip" 2>/dev/null | head -n1)
+if [ -n "$LLVM_STRIP" ] && [ -x "$LLVM_STRIP" ]; then
+    echo "Executando llvm-strip no binário..."
+    "$LLVM_STRIP" -s android/app/libs/arm64-v8a/libSpaghettify.so
+fi
+
 ls -lh android/app/libs/arm64-v8a/libSpaghettify.so
 
 echo "=== [4/4] Gerando APK com Gradle ==="
@@ -49,3 +56,4 @@ chmod +x ./gradlew
 echo "=== COMPILAÇÃO CONCLUÍDA COM SUCESSO! ==="
 echo "APK gerado em:"
 ls -lh app/build/outputs/apk/debug/*.apk
+

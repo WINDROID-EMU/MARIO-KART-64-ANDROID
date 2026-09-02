@@ -2508,10 +2508,15 @@ void render_course_actors(ScreenContext* screen) {
 void update_course_actors(void) {
     struct Actor* actor;
     s32 i;
+    // Lista dos tipos de atores de itens dinâmicos que só o Host deve atualizar
+    // O Client recebe a posição deles via rede, não deve rodar a física local
+    extern s32 g_NetMode;
+    int isNetClient = (g_NetMode == 2); // NET_MODE_JOIN == 2
+
     for (i = 0; i < CM_GetActorSize(); i++) {
 
         actor = CM_GetActor(i);
-        if (actor->flags == 0) {
+        if (actor == NULL || actor->flags == 0) {
             continue;
         }
 
@@ -2520,19 +2525,19 @@ void update_course_actors(void) {
                 //update_actor_falling_rocks((struct FallingRock*) actor);
                 break;
             case ACTOR_GREEN_SHELL:
-                update_actor_green_shell((struct ShellActor*) actor);
+                if (!isNetClient) update_actor_green_shell((struct ShellActor*) actor);
                 break;
             case ACTOR_RED_SHELL:
-                update_actor_red_blue_shell((struct ShellActor*) actor);
+                if (!isNetClient) update_actor_red_blue_shell((struct ShellActor*) actor);
                 break;
             case ACTOR_BLUE_SPINY_SHELL:
-                update_actor_red_blue_shell((struct ShellActor*) actor);
+                if (!isNetClient) update_actor_red_blue_shell((struct ShellActor*) actor);
                 break;
             case ACTOR_KIWANO_FRUIT:
-                update_actor_kiwano_fruit((struct KiwanoFruit*) actor);
+                if (!isNetClient) update_actor_kiwano_fruit((struct KiwanoFruit*) actor);
                 break;
             case ACTOR_BANANA:
-                update_actor_banana((struct BananaActor*) actor);
+                if (!isNetClient) update_actor_banana((struct BananaActor*) actor);
                 break;
             case ACTOR_PADDLE_BOAT:
                 update_actor_paddle_boat((struct PaddleWheelBoat*) actor);
@@ -2553,19 +2558,19 @@ void update_course_actors(void) {
                 update_actor_item_box_hot_air_balloon((struct ItemBox*) actor);
                 break;
             case ACTOR_FAKE_ITEM_BOX:
-                update_actor_fake_item_box((struct FakeItemBox*) actor);
+                if (!isNetClient) update_actor_fake_item_box((struct FakeItemBox*) actor);
                 break;
             case ACTOR_PIRANHA_PLANT:
                 update_actor_piranha_plant((struct PiranhaPlant*) actor);
                 break;
             case ACTOR_BANANA_BUNCH:
-                update_actor_banana_bunch((struct BananaBunchParent*) actor);
+                if (!isNetClient) update_actor_banana_bunch((struct BananaBunchParent*) actor);
                 break;
             case ACTOR_TRIPLE_GREEN_SHELL:
-                update_actor_triple_shell((TripleShellParent*) actor, ACTOR_GREEN_SHELL);
+                if (!isNetClient) update_actor_triple_shell((TripleShellParent*) actor, ACTOR_GREEN_SHELL);
                 break;
             case ACTOR_TRIPLE_RED_SHELL:
-                update_actor_triple_shell((TripleShellParent*) actor, ACTOR_RED_SHELL);
+                if (!isNetClient) update_actor_triple_shell((TripleShellParent*) actor, ACTOR_RED_SHELL);
                 break;
             case ACTOR_MARIO_SIGN:
                 update_actor_mario_sign(actor);
@@ -2597,7 +2602,7 @@ void update_course_actors(void) {
         }
     }
     evaluate_collision_for_destructible_actors();
-    check_player_use_item();
+    if (!isNetClient) check_player_use_item();
 }
 
 const char* get_actor_display_name(s32 id) {

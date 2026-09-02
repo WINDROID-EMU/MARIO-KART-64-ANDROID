@@ -86,34 +86,34 @@ jobs:
             --overlay-triplets=${{ github.workspace }}/.vcpkg/triplets/community \
             2>&1 | tail -30
 
-      # ── 7. CMake configure + build native lib ─────────────────────────────────
-      - name: Configure Native Library with CMake
+      # ── 7. Build or Verify Native Library (libSpaghettify.so) ────────────────
+      - name: Build or Use Prebuilt Native Library
         env:
           VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
         run: |
-          cmake -B build-android -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.vcpkg/scripts/buildsystems/vcpkg.cmake \
-            -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
-            -DVCPKG_TARGET_TRIPLET=arm64-android \
-            -DANDROID_ABI=arm64-v8a \
-            -DANDROID_PLATFORM=android-24 \
-            -DANDROID_STL=c++_static \
-            -DENABLE_VCPKG=ON \
-            -DSKIP_AUTOMATE_VCPKG=OFF \
-            -DBUILD_MK64=ON \
-            -DBUILD_NAUDIO=ON \
-            -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build Native Library (libSpaghettify.so)
-        run: cmake --build build-android --target Spaghettify --parallel $(nproc)
-
-      # ── 8. Copy .so to Android project ────────────────────────────────────────
-      - name: Copy Native Library to Android Project
-        run: |
-          mkdir -p android/app/libs/arm64-v8a
-          cp build-android/libSpaghettify.so android/app/libs/arm64-v8a/libSpaghettify.so
-          ls -lh android/app/libs/arm64-v8a/libSpaghettify.so
+          if [ -f "android/app/libs/arm64-v8a/libSpaghettify.so" ] && [ -s "android/app/libs/arm64-v8a/libSpaghettify.so" ]; then
+            echo "Found prebuilt libSpaghettify.so in android/app/libs/arm64-v8a/libSpaghettify.so!"
+            ls -lh android/app/libs/arm64-v8a/libSpaghettify.so
+          else
+            echo "Building libSpaghettify.so with CMake..."
+            cmake -B build-android -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/.vcpkg/scripts/buildsystems/vcpkg.cmake \
+              -DVCPKG_CHAINLOAD_TOOLCHAIN_FILE=${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake \
+              -DVCPKG_TARGET_TRIPLET=arm64-android \
+              -DANDROID_ABI=arm64-v8a \
+              -DANDROID_PLATFORM=android-24 \
+              -DANDROID_STL=c++_static \
+              -DENABLE_VCPKG=ON \
+              -DSKIP_AUTOMATE_VCPKG=OFF \
+              -DBUILD_MK64=ON \
+              -DBUILD_NAUDIO=ON \
+              -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-android --target Spaghettify --parallel $(nproc)
+            mkdir -p android/app/libs/arm64-v8a
+            cp build-android/libSpaghettify.so android/app/libs/arm64-v8a/libSpaghettify.so
+            ls -lh android/app/libs/arm64-v8a/libSpaghettify.so
+          fi
 
       # ── 9. Gradle APK ─────────────────────────────────────────────────────────
       - name: Make Gradle Wrapper Executable

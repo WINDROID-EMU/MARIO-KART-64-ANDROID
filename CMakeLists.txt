@@ -194,8 +194,18 @@ if(ANDROID)
     if(TARGET libultraship)
       target_link_libraries(libultraship PRIVATE Iconv::Iconv)
     endif()
+  else()
+    # Fallback to direct library path in vcpkg installed prefix or target
+    find_library(ICONV_LIB iconv PATHS ${CMAKE_CURRENT_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET}/lib)
+    if(ICONV_LIB)
+      target_link_libraries(${PROJECT_NAME} PRIVATE ${ICONV_LIB})
+      if(TARGET libultraship)
+        target_link_libraries(libultraship PRIVATE ${ICONV_LIB})
+      endif()
+    endif()
   endif()
 endif()
+
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")

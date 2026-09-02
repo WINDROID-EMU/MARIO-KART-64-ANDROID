@@ -465,7 +465,7 @@ void read_controllers(void) {
             );
         }
 
-        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos, itens e ranking dos karts
+        // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos e itens dos karts
         if (gGamestate == RACING) {
             if (g_NetMode == NET_MODE_HOST) {
                 // Host envia seu próprio kart (kart 0) e todos os oponentes da CPU (karts 2..7)
@@ -485,9 +485,9 @@ void read_controllers(void) {
                                 lp->triggers,
                                 lp->currentItemCopy,
                                 lp->kartGraphics,
-                                (uint8_t)gGPCurrentRaceRankByPlayerId[k],
-                                (uint8_t)gLapCountByPlayerId[k],
-                                gLapCompletionPercentByPlayerId[k]
+                                0,
+                                0,
+                                0.0f
                             );
                         }
                     }
@@ -507,9 +507,9 @@ void read_controllers(void) {
                     lp->triggers,
                     lp->currentItemCopy,
                     lp->kartGraphics,
-                    (uint8_t)gGPCurrentRaceRankByPlayerId[localIdx],
-                    (uint8_t)gLapCountByPlayerId[localIdx],
-                    gLapCompletionPercentByPlayerId[localIdx]
+                    0,
+                    0,
+                    0.0f
                 );
             }
         }
@@ -555,7 +555,7 @@ void read_controllers(void) {
             }
         }
 
-        // Durante a corrida, aplica a sincronização de física, efeitos, itens e ranking de todos os karts remotos e oponentes
+        // Durante a corrida, aplica a sincronização de física, efeitos e itens de todos os karts remotos e oponentes
         if (gGamestate == RACING) {
             D_80164A28 = 0; // Garante FOV 1P padrão (sem esticar ou dar zoom no personagem)
             for (int i = 0; i < 8; i++) {
@@ -575,17 +575,6 @@ void read_controllers(void) {
                         rp->effects = ps.effects;
                         rp->triggers |= ps.triggers;
                         rp->kartGraphics = ps.kartGraphics;
-
-                        // Se for o cliente recebendo dados autoritativos do host (kart 0 ou oponentes bots 2..7)
-                        if (g_NetMode == NET_MODE_JOIN) {
-                            gGPCurrentRaceRankByPlayerId[i] = (s32)ps.rank;
-                            gLapCountByPlayerId[i] = (s32)ps.lap;
-                            gLapCompletionPercentByPlayerId[i] = ps.lapCompletion;
-                            if (ps.rank < 8) {
-                                gGPCurrentRacePlayerIdByRank[ps.rank] = (s16)i;
-                                gGPCurrentRaceCharacterIdByRank[ps.rank] = rp->characterId;
-                            }
-                        }
 
                         // Se o jogador/oponente ativou um item (como cascos triplos, bananas, etc.)
                         if (ps.currentItem == ITEM_NONE && rp->currentItemCopy != ITEM_NONE) {

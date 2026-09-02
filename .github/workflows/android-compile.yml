@@ -8,6 +8,9 @@ on:
     branches: [ "*" ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-android:
     name: Build Android APK (arm64-v8a)
@@ -139,8 +142,29 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
 
-      # ── 11. GitHub Releases (on tags or manual release) ───────────────────────
-      - name: Publish GitHub Release
+      # ── 11. GitHub Releases (Nightly on main or Tagged Release) ───────────────
+      - name: Publish Nightly GitHub Release (main branch)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: "Mario Kart 64 Android (Nightly Build)"
+          body: |
+            ## Mario Kart 64 Android - Nightly Build
+            - **Commit**: ${{ github.sha }}
+            - **Branch**: main
+            - **Build Date**: ${{ github.event.head_commit.timestamp }}
+            
+            ### APKs disponíveis para download:
+            - **Release APK**: `app-release.apk` (Otimizado e assinado)
+            - **Debug APK**: `app-debug.apk` (Para testes e logs)
+          prerelease: true
+          files: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Tagged GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
@@ -149,3 +173,4 @@ jobs:
             android/app/build/outputs/apk/debug/*.apk
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
+

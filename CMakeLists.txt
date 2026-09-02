@@ -187,6 +187,22 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   endforeach()
 endif()
 
+if(ANDROID)
+  find_package(Iconv QUIET)
+  if(Iconv_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Iconv::Iconv)
+    if(TARGET libultraship)
+      target_link_libraries(libultraship PRIVATE Iconv::Iconv)
+    endif()
+  else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE iconv)
+    if(TARGET libultraship)
+      target_link_libraries(libultraship PRIVATE iconv)
+    endif()
+  endif()
+endif()
+
+
 if(CMAKE_SYSTEM_NAME STREQUAL "NintendoSwitch")
 
   nx_generate_nacp(

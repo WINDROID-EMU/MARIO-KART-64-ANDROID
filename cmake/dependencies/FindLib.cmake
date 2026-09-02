@@ -37,5 +37,15 @@ if(NOT USE_OPENGLES)
   target_include_directories(${PROJECT_NAME} PRIVATE ${GLEW_INCLUDE_DIRS})
 endif()
 
+if(ANDROID)
+  find_package(Iconv QUIET)
+  if(Iconv_FOUND)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Iconv::Iconv)
+  else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE iconv)
+  endif()
+endif()
+
 target_link_libraries(${PROJECT_NAME}
                       PRIVATE torch ${ADDITIONAL_LIBRARY_DEPENDENCIES})
+

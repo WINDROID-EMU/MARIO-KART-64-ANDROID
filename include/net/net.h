@@ -67,7 +67,7 @@ typedef struct {
     float    lapCompletion;
 } NetPlayerSyncPacket;
 
-#define NET_MAX_SYNC_ACTORS 24
+#define NET_MAX_SYNC_ACTORS 48
 
 typedef struct {
     int16_t type;
@@ -77,6 +77,17 @@ typedef struct {
     float pos[3];
     float velocity[3];
 } NetActorData;
+
+// Estrutura de evento de item (disparo, colisão, uso com múltiplos estágios)
+typedef struct {
+    uint8_t  type;       // 8 = NET_PACKET_ITEM_EVENT
+    uint8_t  player_idx; // 0..7
+    int16_t  item_type;  // ITEM_*
+    uint8_t  action;     // 1 = USE, 2 = HIT, 3 = LOSE
+    uint8_t  param;      // sub-status / contagem
+    float    pos[3];
+    float    dir[3];
+} NetItemEventPacket;
 
 // Estrutura de sincronização de atores/itens soltos na pista (Bananas, Cascos, Caixas Falsas)
 typedef struct {
@@ -142,6 +153,7 @@ void netSendPlayerSync(
     uint8_t lap,
     float lapCompletion
 );
+void netSendItemEvent(uint8_t playerIdx, int16_t itemType, uint8_t action, uint8_t param, const float pos[3], const float dir[3]);
 void netSendActorsSync(const NetActorsSyncPacket* packet);
 void netSendRaceSync(
     const uint8_t laps[4],
@@ -153,6 +165,7 @@ void netSendRaceSync(
 
 bool netPopGameState(NetGameStatePacket* out);
 bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out);
+bool netPopItemEvent(NetItemEventPacket* out);
 bool netPopActorsSync(NetActorsSyncPacket* out);
 bool netPopRaceSync(NetRaceSyncPacket* out);
 

@@ -58,7 +58,8 @@ enum NetPacketType {
     NET_PACKET_GAME_STATE    = 4,
     NET_PACKET_PLAYER_SYNC   = 5,
     NET_PACKET_ACTORS_SYNC   = 6,
-    NET_PACKET_RACE_SYNC     = 7
+    NET_PACKET_RACE_SYNC     = 7,
+    NET_PACKET_ITEM_EVENT    = 8
 };
 
 typedef struct {
@@ -77,6 +78,11 @@ static bool                g_HasNewActorsSync = false;
 static NetRaceSyncPacket   g_LastRaceSync = { 0 };
 static bool                g_HasNewRaceSync = false;
 
+#define MAX_PENDING_ITEM_EVENTS 32
+static NetItemEventPacket  g_ItemEventQueue[MAX_PENDING_ITEM_EVENTS];
+static int                 g_ItemEventHead = 0;
+static int                 g_ItemEventTail = 0;
+
 void netInit(void) {
     if (enet_initialize() != 0) {
         NET_LOG("Falha ao inicializar a biblioteca ENet.");
@@ -88,6 +94,8 @@ void netInit(void) {
     memset(g_LastPlayerSync, 0, sizeof(g_LastPlayerSync));
     g_HasNewGameState = false;
     for (int i = 0; i < NET_MAX_RACERS; i++) g_HasNewPlayerSync[i] = false;
+    g_ItemEventHead = 0;
+    g_ItemEventTail = 0;
 }
 
 void netShutdown(void) {
@@ -313,6 +321,27 @@ void netSendPlayerSync(
     }
 }
 
+void netSendItemEvent(uint8_t playerIdx, int16_t itemType, uint8_t action, uint8_t param, const float pos[3], const float dir[3]) {
+    if (g_NetMode == NET_MODE_NONE || g_Host == NULL) {
+        return;
+    }
+    NetItemEventPacket pkt;
+    pkt.type = NET_PACKET_ITEM_EVENT;
+    pkt.player_idx = playerIdx;
+    pkt.item_type = itemType;
+    pkt.action = action;
+    pkt.param = param;
+    if (pos) { pkt.pos[0] = pos[0]; pkt.pos[1] = pos[1]; pkt.pos[2] = pos[2]; } else { memset(pkt.pos, 0, sizeof(pkt.pos)); }
+    if (dir) { pkt.dir[0] = dir[0]; pkt.dir[1] = dir[1]; pkt.dir[2] = dir[2]; } else { memset(pkt.dir, 0, sizeof(pkt.dir)); }
+
+    ENetPacket* enetPkt = enet_packet_create(&pkt, sizeof(NetItemEventPacket), ENET_PACKET_FLAG_RELIABLE);
+    if (g_NetMode == NET_MODE_HOST) {
+        enet_host_broadcast(g_Host, 1, enetPkt);
+    } else if (g_NetMode == NET_MODE_JOIN && g_ServerPeer != NULL) {
+        enet_peer_send(g_ServerPeer, 1, enetPkt);
+    }
+}
+
 void netSendActorsSync(const NetActorsSyncPacket* packet) {
     if (g_NetMode != NET_MODE_HOST || g_Host == NULL || packet == NULL) {
         return;
@@ -362,6 +391,15 @@ bool netPopPlayerSync(int playerIdx, NetPlayerSyncPacket* out) {
     if (playerIdx >= 0 && playerIdx < NET_MAX_RACERS && g_HasNewPlayerSync[playerIdx] && out != NULL) {
         *out = g_LastPlayerSync[playerIdx];
         g_HasNewPlayerSync[playerIdx] = false;
+        return true;
+    }
+    return false;
+}
+
+bool netPopItemEvent(NetItemEventPacket* out) {
+    if (g_ItemEventHead != g_ItemEventTail && out != NULL) {
+        *out = g_ItemEventQueue[g_ItemEventTail];
+        g_ItemEventTail = (g_ItemEventTail + 1) % MAX_PENDING_ITEM_EVENTS;
         return true;
     }
     return false;
@@ -558,6 +596,25 @@ void netUpdate(void) {
                         // Se Host recebeu de um cliente, retransmite aos outros clientes
                         if (g_NetMode == NET_MODE_HOST) {
                             ENetPacket* fwdPkt = enet_packet_create(rs, sizeof(NetRaceSyncPacket), ENET_PACKET_FLAG_RELIABLE);
+                            for (int i = 1; i < NET_MAX_CLIENTS; i++) {
+                                if (g_ClientPeers[i] != NULL && g_ClientPeers[i] != event.peer) {
+                                    enet_peer_send(g_ClientPeers[i], 1, fwdPkt);
+                                }
+                            }
+                        }
+                    }
+                } else if (event.packet->dataLength == sizeof(NetItemEventPacket)) {
+                    NetItemEventPacket* itemEvt = (NetItemEventPacket*)event.packet->data;
+                    if (itemEvt->type == NET_PACKET_ITEM_EVENT) {
+                        int nextHead = (g_ItemEventHead + 1) % MAX_PENDING_ITEM_EVENTS;
+                        if (nextHead != g_ItemEventTail) {
+                            g_ItemEventQueue[g_ItemEventHead] = *itemEvt;
+                            g_ItemEventHead = nextHead;
+                        }
+
+                        // Se Host recebeu de um cliente, retransmite com confiabilidade para os outros clientes
+                        if (g_NetMode == NET_MODE_HOST) {
+                            ENetPacket* fwdPkt = enet_packet_create(itemEvt, sizeof(NetItemEventPacket), ENET_PACKET_FLAG_RELIABLE);
                             for (int i = 1; i < NET_MAX_CLIENTS; i++) {
                                 if (g_ClientPeers[i] != NULL && g_ClientPeers[i] != event.peer) {
                                     enet_peer_send(g_ClientPeers[i], 1, fwdPkt);

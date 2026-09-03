@@ -2525,13 +2525,23 @@ void update_course_actors(void) {
                 //update_actor_falling_rocks((struct FallingRock*) actor);
                 break;
             case ACTOR_GREEN_SHELL:
-                if (!isNetClient) update_actor_green_shell((struct ShellActor*) actor);
+                if (!isNetClient) {
+                    update_actor_green_shell((struct ShellActor*) actor);
+                } else {
+                    actor->pos[0] += actor->velocity[0];
+                    actor->pos[1] += actor->velocity[1];
+                    actor->pos[2] += actor->velocity[2];
+                }
                 break;
             case ACTOR_RED_SHELL:
-                if (!isNetClient) update_actor_red_blue_shell((struct ShellActor*) actor);
-                break;
             case ACTOR_BLUE_SPINY_SHELL:
-                if (!isNetClient) update_actor_red_blue_shell((struct ShellActor*) actor);
+                if (!isNetClient) {
+                    update_actor_red_blue_shell((struct ShellActor*) actor);
+                } else {
+                    actor->pos[0] += actor->velocity[0];
+                    actor->pos[1] += actor->velocity[1];
+                    actor->pos[2] += actor->velocity[2];
+                }
                 break;
             case ACTOR_KIWANO_FRUIT:
                 if (!isNetClient) update_actor_kiwano_fruit((struct KiwanoFruit*) actor);
@@ -2602,7 +2612,7 @@ void update_course_actors(void) {
         }
     }
     evaluate_collision_for_destructible_actors();
-    if (!isNetClient) check_player_use_item();
+    check_player_use_item();
 }
 
 const char* get_actor_display_name(s32 id) {

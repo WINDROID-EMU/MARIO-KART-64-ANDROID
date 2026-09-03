@@ -927,9 +927,20 @@ void use_thunder_item(Player* player) {
     }
 }
 
+extern s32 g_NetMode;
+extern s32 g_NetPlayerIndex;
+extern void netSendItemEvent(uint8_t playerIdx, int16_t itemType, uint8_t action, uint8_t param, const float pos[3], const float dir[3]);
+
 // Handles item use
 void player_use_item(Player* player) {
     s32 playerId = player - gPlayerOne;
+    int16_t itemToUse = player->currentItemCopy;
+
+    if (g_NetMode != 0 && playerId == g_NetPlayerIndex) {
+        float pPos[3] = { player->pos[0], player->pos[1], player->pos[2] };
+        float pDir[3] = { player->velocity[0], player->velocity[1], player->velocity[2] };
+        netSendItemEvent((uint8_t)playerId, itemToUse, 1 /* ACTION_USE */, 0, pPos, pDir);
+    }
 
     switch (player->currentItemCopy) {
         case ITEM_GREEN_SHELL:
@@ -990,6 +1001,25 @@ void check_player_use_item(void) {
 
     for (player = &gPlayers[0], loopController = &gControllers[0], target = &gControllers[4]; loopController != target;
          player++, loopController++) {
+        s32 playerId = player - gPlayerOne;
+
+        // No modo Netplay, cada máquina processa diretamente as entradas de item do seu jogador local (P1, P2, P3, P4)
+        if (g_NetMode != 0) {
+            if (playerId == g_NetPlayerIndex) {
+                controller = loopController;
+                if (prevent_item_use(player) == false) {
+                    if ((player->currentItemCopy != ITEM_NONE) &&
+                        ((player->type & PLAYER_START_SEQUENCE) == 0)) {
+                        if ((controller->buttonPressed & Z_TRIG) != 0) {
+                            controller->buttonPressed &= ~Z_TRIG;
+                            player_use_item(player);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+
         controller = loopController;
         if (prevent_item_use(player) == false) {
             if ((player->type & PLAYER_INVISIBLE_OR_BOMB) != 0) {

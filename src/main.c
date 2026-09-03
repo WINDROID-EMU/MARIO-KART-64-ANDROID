@@ -68,6 +68,8 @@ extern f32 gLapCompletionPercentByPlayerId[];
 extern u16 gNumPermanentActors;
 extern s32 D_8018D204;
 extern s32 gPlayerWinningIndex;
+extern s32 D_802BA038;
+void func_8028E298(void);
 struct Actor* CM_GetActor(size_t index);
 size_t CM_GetActorSize(void);
 s16 add_actor_to_empty_slot(Vec3f pos, Vec3s rot, Vec3f velocity, s16 actorType);
@@ -103,6 +105,15 @@ struct Controller* gControllerSeven = &gControllers[6];
 struct Controller* gControllerEight = &gControllers[7];
 
 Player gPlayers[NUM_PLAYERS];
+
+typedef struct {
+    float targetPos[3];
+    float targetVel[3];
+    int16_t targetRot[3];
+    bool initialized;
+} NetRemotePlayerLerp;
+
+static NetRemotePlayerLerp s_RemoteLerp[8];
 Player* gPlayerOne = &gPlayers[0];
 Player* gPlayerTwo = &gPlayers[1];
 Player* gPlayerThree = &gPlayers[2];
@@ -475,9 +486,9 @@ void read_controllers(void) {
         // Se estiver em corrida, sincroniza física, posição, velocidade, rotação, efeitos, itens dos karts, atores da pista e status da corrida
         if (gGamestate == RACING) {
             if (g_NetMode == NET_MODE_HOST) {
-                // Host envia seu próprio kart (kart 0) e todos os oponentes da CPU (karts 2..7)
+                // Host envia seu próprio kart (kart 0) e todos os oponentes da CPU (karts que não são clientes humanos conectados)
                 for (int k = 0; k < 8; k++) {
-                    if (k != 1) { // 1 é o Client (Player 2)
+                    if (k == 0 || !(g_NetConnectedPlayers & (1 << k))) {
                         Player* lp = &gPlayers[k];
                         if (lp->type & PLAYER_EXISTS) {
                             float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
@@ -529,9 +540,10 @@ void read_controllers(void) {
                 uint8_t lapCounts[4] = { (uint8_t)playerHUD[0].lapCount, (uint8_t)playerHUD[1].lapCount, (uint8_t)playerHUD[2].lapCount, (uint8_t)playerHUD[3].lapCount };
                 uint8_t alsoLapCounts[4] = { (uint8_t)playerHUD[0].alsoLapCount, (uint8_t)playerHUD[1].alsoLapCount, (uint8_t)playerHUD[2].alsoLapCount, (uint8_t)playerHUD[3].alsoLapCount };
                 uint8_t raceComplete[4] = { (uint8_t)playerHUD[0].raceCompleteBool, (uint8_t)playerHUD[1].raceCompleteBool, (uint8_t)playerHUD[2].raceCompleteBool, (uint8_t)playerHUD[3].raceCompleteBool };
-                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, (uint8_t)D_8018D204, (uint8_t)gPlayerWinningIndex);
+                uint8_t isEnded = (uint8_t)(gRaceState == RACE_FINISHED || D_8018D204 != 0 || (playerHUD[0].raceCompleteBool && playerHUD[1].raceCompleteBool));
+                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, isEnded, (uint8_t)gPlayerWinningIndex);
             } else if (g_NetMode == NET_MODE_JOIN && localIdx >= 0 && localIdx < 4) {
-                // Client envia seu próprio kart (Player 2)
+                // Client envia seu próprio kart
                 Player* lp = &gPlayers[localIdx];
                 float pPos[3] = { lp->pos[0], lp->pos[1], lp->pos[2] };
                 float pVel[3] = { lp->velocity[0], lp->velocity[1], lp->velocity[2] };
@@ -551,10 +563,11 @@ void read_controllers(void) {
                 );
 
                 // Client envia seu status de volta e conclusão para o Host
-                uint8_t lapCounts[4] = { (uint8_t)playerHUD[0].lapCount, (uint8_t)playerHUD[1].lapCount, 0, 0 };
-                uint8_t alsoLapCounts[4] = { (uint8_t)playerHUD[0].alsoLapCount, (uint8_t)playerHUD[1].alsoLapCount, 0, 0 };
-                uint8_t raceComplete[4] = { (uint8_t)playerHUD[0].raceCompleteBool, (uint8_t)playerHUD[1].raceCompleteBool, 0, 0 };
-                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, (uint8_t)D_8018D204, (uint8_t)gPlayerWinningIndex);
+                uint8_t lapCounts[4] = { (uint8_t)playerHUD[0].lapCount, (uint8_t)playerHUD[1].lapCount, (uint8_t)playerHUD[2].lapCount, (uint8_t)playerHUD[3].lapCount };
+                uint8_t alsoLapCounts[4] = { (uint8_t)playerHUD[0].alsoLapCount, (uint8_t)playerHUD[1].alsoLapCount, (uint8_t)playerHUD[2].alsoLapCount, (uint8_t)playerHUD[3].alsoLapCount };
+                uint8_t raceComplete[4] = { (uint8_t)playerHUD[0].raceCompleteBool, (uint8_t)playerHUD[1].raceCompleteBool, (uint8_t)playerHUD[2].raceCompleteBool, (uint8_t)playerHUD[3].raceCompleteBool };
+                uint8_t isEnded = (uint8_t)(gRaceState == RACE_FINISHED || D_8018D204 != 0);
+                netSendRaceSync(lapCounts, alsoLapCounts, raceComplete, isEnded, (uint8_t)gPlayerWinningIndex);
             }
         }
 
@@ -580,6 +593,15 @@ void read_controllers(void) {
                 gCCSelection = (s32)gs.ccSelection;
                 gPlayerCountSelection1 = (s32)gs.playerCountSelection;
                 gPlayerCount = (s8)gs.playerCountSelection;
+
+                // Detecta se o Host avançou para a próxima pista (novo courseId ou novo índice na copa)
+                if (gGamestate == RACING && (gCurrentCourseId != gs.courseId || gCourseIndexInCup != (s8)gs.courseIndexInCup) && gs.courseId != 0) {
+                    gIsInQuitToMenuTransition = 1;
+                    gQuitToMenuTransitionCounter = 5;
+                    gRaceState = RACE_EXIT;
+                    gGotoMode = RACING;
+                }
+
                 gCurrentCourseId = gs.courseId;
                 gCupSelection = (s8)gs.cupSelection;
                 gCourseIndexInCup = (s8)gs.courseIndexInCup;
@@ -598,12 +620,8 @@ void read_controllers(void) {
                 }
 
                 // Sincroniza gGotoMode do Host para o Client
-                // Quando o Host vai para a próxima pista (gGotoMode == RACING),
-                // precisamos acionar a transição correta no Client também
                 if (gs.gotoMode != 0 && gs.gotoMode != (uint8_t)gGotoMode) {
                     gGotoMode = (s32)gs.gotoMode;
-                    // Se o Host definiu RACING (próxima pista) ou ENDING (tela final)
-                    // o Client deve entrar no mesmo fluxo de saída de corrida
                     if (gs.gotoMode == RACING || gs.gotoMode == ENDING) {
                         gIsInQuitToMenuTransition = 1;
                         gQuitToMenuTransitionCounter = 5;
@@ -613,39 +631,94 @@ void read_controllers(void) {
             }
         }
 
-        // Durante a corrida, aplica a sincronização de física, efeitos, itens, atores e status da corrida
+        // Durante a corrida, aplica a sincronização suave de física, efeitos, eventos de itens, atores e status da corrida
         if (gGamestate == RACING) {
-            D_80164A28 = 0; // Garante FOV 1P padrão (sem esticar ou dar zoom no personagem)
+            D_80164A28 = 0; // Garante FOV 1P padrão
+
+            // 1. Processa eventos de uso de itens transmitidos pela rede
+            NetItemEventPacket itemEvt;
+            while (netPopItemEvent(&itemEvt)) {
+                if (itemEvt.player_idx < 8 && itemEvt.player_idx != (uint8_t)localIdx) {
+                    Player* rp = &gPlayers[itemEvt.player_idx];
+                    if (itemEvt.action == 1 /* ACTION_USE */) {
+                        rp->currentItemCopy = itemEvt.item_type;
+                        player_use_item(rp);
+                    }
+                }
+            }
+
+            // 2. Recebe atualizações de estado e aplica interpolação suave (LERP) nos karts remotos
             for (int i = 0; i < 8; i++) {
                 if (i != localIdx) {
                     NetPlayerSyncPacket ps;
                     if (netPopPlayerSync(i, &ps)) {
                         Player* rp = &gPlayers[i];
-                        rp->pos[0] = ps.pos[0];
-                        rp->pos[1] = ps.pos[1];
-                        rp->pos[2] = ps.pos[2];
-                        rp->velocity[0] = ps.velocity[0];
-                        rp->velocity[1] = ps.velocity[1];
-                        rp->velocity[2] = ps.velocity[2];
-                        rp->rotation[0] = ps.rotation[0];
-                        rp->rotation[1] = ps.rotation[1];
-                        rp->rotation[2] = ps.rotation[2];
+                        s_RemoteLerp[i].targetPos[0] = ps.pos[0];
+                        s_RemoteLerp[i].targetPos[1] = ps.pos[1];
+                        s_RemoteLerp[i].targetPos[2] = ps.pos[2];
+                        s_RemoteLerp[i].targetVel[0] = ps.velocity[0];
+                        s_RemoteLerp[i].targetVel[1] = ps.velocity[1];
+                        s_RemoteLerp[i].targetVel[2] = ps.velocity[2];
+                        s_RemoteLerp[i].targetRot[0] = ps.rotation[0];
+                        s_RemoteLerp[i].targetRot[1] = ps.rotation[1];
+                        s_RemoteLerp[i].targetRot[2] = ps.rotation[2];
                         rp->effects = ps.effects;
                         rp->triggers |= ps.triggers;
                         rp->kartGraphics = ps.kartGraphics;
 
-                        // Se o jogador/oponente ativou um item (como cascos triplos, bananas, etc.)
-                        if (ps.currentItem == ITEM_NONE && rp->currentItemCopy != ITEM_NONE) {
-                            player_use_item(rp);
-                            rp->currentItemCopy = ITEM_NONE;
-                        } else if (ps.currentItem != ITEM_NONE) {
-                            rp->currentItemCopy = (s16)ps.currentItem;
+                        if (!s_RemoteLerp[i].initialized) {
+                            rp->pos[0] = ps.pos[0];
+                            rp->pos[1] = ps.pos[1];
+                            rp->pos[2] = ps.pos[2];
+                            rp->velocity[0] = ps.velocity[0];
+                            rp->velocity[1] = ps.velocity[1];
+                            rp->velocity[2] = ps.velocity[2];
+                            rp->rotation[0] = ps.rotation[0];
+                            rp->rotation[1] = ps.rotation[1];
+                            rp->rotation[2] = ps.rotation[2];
+                            s_RemoteLerp[i].initialized = true;
+                        }
+
+                        rp->currentItemCopy = (s16)ps.currentItem;
+                    }
+
+                    // Aplica interpolação contínua de posição e velocidade a cada frame para remover tremor/teleportes
+                    if (s_RemoteLerp[i].initialized) {
+                        Player* rp = &gPlayers[i];
+                        float dx = s_RemoteLerp[i].targetPos[0] - rp->pos[0];
+                        float dy = s_RemoteLerp[i].targetPos[1] - rp->pos[1];
+                        float dz = s_RemoteLerp[i].targetPos[2] - rp->pos[2];
+                        float distSq = dx * dx + dy * dy + dz * dz;
+
+                        // Se a distância for muito grande (ex: respawn do Lakitu), ajusta instantaneamente
+                        if (distSq > 40000.0f) {
+                            rp->pos[0] = s_RemoteLerp[i].targetPos[0];
+                            rp->pos[1] = s_RemoteLerp[i].targetPos[1];
+                            rp->pos[2] = s_RemoteLerp[i].targetPos[2];
+                            rp->velocity[0] = s_RemoteLerp[i].targetVel[0];
+                            rp->velocity[1] = s_RemoteLerp[i].targetVel[1];
+                            rp->velocity[2] = s_RemoteLerp[i].targetVel[2];
+                            rp->rotation[0] = s_RemoteLerp[i].targetRot[0];
+                            rp->rotation[1] = s_RemoteLerp[i].targetRot[1];
+                            rp->rotation[2] = s_RemoteLerp[i].targetRot[2];
+                        } else {
+                            // Interpolação suave (LERP adaptativo)
+                            const float lerpFactor = 0.35f;
+                            rp->pos[0] += dx * lerpFactor;
+                            rp->pos[1] += dy * lerpFactor;
+                            rp->pos[2] += dz * lerpFactor;
+                            rp->velocity[0] += (s_RemoteLerp[i].targetVel[0] - rp->velocity[0]) * lerpFactor;
+                            rp->velocity[1] += (s_RemoteLerp[i].targetVel[1] - rp->velocity[1]) * lerpFactor;
+                            rp->velocity[2] += (s_RemoteLerp[i].targetVel[2] - rp->velocity[2]) * lerpFactor;
+                            rp->rotation[0] = s_RemoteLerp[i].targetRot[0];
+                            rp->rotation[1] = s_RemoteLerp[i].targetRot[1];
+                            rp->rotation[2] = s_RemoteLerp[i].targetRot[2];
                         }
                     }
                 }
             }
 
-            // Client aplica sincronização de atores de itens soltos na pista vindos do Host
+            // 3. Client aplica sincronização de atores de itens soltos na pista vindos do Host
             if (g_NetMode == NET_MODE_JOIN) {
                 NetActorsSyncPacket actPkt;
                 if (netPopActorsSync(&actPkt)) {
@@ -691,12 +764,9 @@ void read_controllers(void) {
                 }
             }
 
-            // Ambos aplicam sincronização de término de corrida e voltas completadas
+            // 4. Ambos aplicam sincronização de término de corrida e voltas completadas
             NetRaceSyncPacket racePkt;
             if (netPopRaceSync(&racePkt)) {
-                if (racePkt.raceEnded) {
-                    D_8018D204 = 1;
-                }
                 gPlayerWinningIndex = (s8)racePkt.winnerIndex;
                 for (int p = 0; p < 4; p++) {
                     if (p != localIdx) {
@@ -707,11 +777,42 @@ void read_controllers(void) {
                         if (racePkt.alsoLapCount[p] > playerHUD[p].alsoLapCount) {
                             playerHUD[p].alsoLapCount = (s8)racePkt.alsoLapCount[p];
                         }
+                        if (racePkt.raceComplete[p]) {
+                            gPlayers[p].lapCount = 3;
+                            gLapCountByPlayerId[p] = 3;
+                            gPlayers[p].type |= PLAYER_CINEMATIC_MODE | PLAYER_CPU;
+                        }
+                    }
+                }
+                if (racePkt.raceEnded) {
+                    D_8018D204 = 1;
+                    if (gRaceState == RACE_IN_PROGRESS || gRaceState == RACE_CALCULATE_RANKS) {
+                        gPlayers[0].type |= PLAYER_CINEMATIC_MODE | PLAYER_CPU;
+                        gPlayers[1].type |= PLAYER_CINEMATIC_MODE | PLAYER_CPU;
+                        func_8028E298();
+                        D_802BA038 = 180;
+                        gRaceState = RACE_FINISHED;
                     }
                 }
                 if (playerHUD[0].raceCompleteBool && playerHUD[1].raceCompleteBool) {
+                    gPlayers[0].type |= PLAYER_CINEMATIC_MODE | PLAYER_CPU;
+                    gPlayers[1].type |= PLAYER_CINEMATIC_MODE | PLAYER_CPU;
                     D_8018D204 = 1;
+                    if (gRaceState == RACE_IN_PROGRESS || gRaceState == RACE_CALCULATE_RANKS) {
+                        if (gPlayerOne->currentRank < gPlayerTwo->currentRank) {
+                            gPlayerWinningIndex = 1;
+                        } else {
+                            gPlayerWinningIndex = 0;
+                        }
+                        func_8028E298();
+                        D_802BA038 = 180;
+                        gRaceState = RACE_FINISHED;
+                    }
                 }
+            }
+        } else {
+            for (int i = 0; i < 8; i++) {
+                s_RemoteLerp[i].initialized = false;
             }
         }
 
